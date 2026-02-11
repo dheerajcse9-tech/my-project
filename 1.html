@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Hand Cricket | Registration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="1.css">
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- Dark mode toggle -->
+    <div class="theme-toggle">
+      <span>🌙</span>
+      <label class="switch">
+        <input type="checkbox" id="darkToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <h1>🏏 AI Hand Cricket</h1>
+    <p class="subtitle">Enter your details to start the game</p>
+
+    <form id="registrationForm">
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="name" required>
+      </div>
+
+      <div class="form-group">
+        <label>Roll Number</label>
+        <input type="text" id="rollno" required>
+      </div>
+
+      <div class="form-group">
+        <label>Branch</label>
+        <select id="branch" required>
+          <option value="">Select Branch</option>
+          <option value="CSE">Computer Science and Engineering</option>
+          <option value="ECE">Electronics and Communication Engineering</option>
+          <option value="EEE">Electrical and Electronics Engineering</option>
+          <option value="ME">Mechanical Engineering</option>
+          <option value="CH">Chemical Engineering</option>
+          <option value="MT">Metallurgical Engineering</option>
+          <option value="BT">Biotechnology</option>
+          <option value="CE">Civil Engineering</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Favorite Indian Cricketer</label>
+        <input type="text" id="favCricketer" required>
+      </div>
+
+      <div class="form-group">
+        <label>Mobile Number (for winners only)</label>
+        <input type="tel" id="mobile" pattern="[0-9]{10}">
+        <small>
+          Mobile number will be used only to contact prize winners for certificate distribution.
+        </small>
+      </div>
+
+      <div class="consent">
+        <input type="checkbox" id="consent">
+        <label for="consent">
+          I consent to share my details for fest participation and winner communication only.
+        </label>
+      </div>
+
+      <button type="submit" id="submitBtn" disabled>
+        Proceed to Rules
+      </button>
+
+    </form>
+
+    <p class="footer">
+      Data collected is used only during the event.
+    </p>
+
+  </div>
+
+  <script src="1.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Hand Cricket | Rules</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="2.css">
+</head>
+
+<body>
+
+  <div class="rules-container">
+
+    <h1>📜 Game Rules</h1>
+    <p class="subtitle">Read carefully before starting the game</p>
+
+    <div class="rule-box">
+      <h2>🎯 Objective</h2>
+      <p>
+        Score as many runs as possible against the <b>AI opponent</b>
+        using hand gestures (1–6).  
+        If your number matches the AI’s number, you are <b>OUT</b>.
+      </p>
+    </div>
+
+    <div class="rule-box">
+      <h2>✋ Hand Gesture Mapping</h2>
+      <ul>
+        <li>1 finger → 1 run</li>
+        <li>2 fingers → 2 runs</li>
+        <li>3 fingers → 3 runs</li>
+        <li>4 fingers → 4 runs</li>
+        <li>5 fingers → 5 runs</li>
+        <li>6 fingers → 6 runs</li>
+      </ul>
+    </div>
+
+    <div class="rule-box">
+      <h2>🧠 AI Strategy</h2>
+      <ul>
+        <li><b>Early Game:</b> Random guesses</li>
+        <li><b>Mid Game:</b> Learns your frequently used numbers</li>
+        <li><b>End Game:</b> Aggressive prediction to get you OUT</li>
+      </ul>
+    </div>
+
+    <div class="rule-box">
+      <h2>🏏 Scoring Rules</h2>
+      <ul>
+        <li>If your number ≠ AI number → Runs = your number</li>
+        <li>If your number = AI number → <b>OUT</b></li>
+        <li>Each gesture counts as one ball</li>
+      </ul>
+    </div>
+
+    <div class="rule-box highlight">
+      <h2>🏆 Winner Selection</h2>
+      <p><b>Winner is decided using the following order:</b></p>
+      <ol>
+        <li>Highest total runs</li>
+        <li>If runs are same → Higher <b>Strike Rate</b> wins</li>
+        <li>If still tied → Fewer balls played</li>
+      </ol>
+
+      <p class="formula">
+        Strike Rate = (Runs / Balls) × 100
+      </p>
+    </div>
+
+    <div class="rule-box">
+      <h2>📊 Leaderboard</h2>
+      <p>
+        A live leaderboard shows all players with their
+        runs, balls played, and ranking in real time.
+      </p>
+    </div>
+
+    <div class="rule-box">
+      <h2>🎥 Camera & Offline Mode</h2>
+      <ul>
+        <li>Ensure good lighting for camera mode</li>
+        <li>Keep hand inside camera frame</li>
+        <li>If camera fails, use <b>Offline Mode</b> (buttons 1–6)</li>
+      </ul>
+    </div>
+
+    <div class="rule-box">
+      <h2>👁️ After You Are OUT</h2>
+      <p>
+        After getting OUT, a <b>Face Structure Similarity</b>
+        feature shows which Indian male cricketer you resemble
+        (for entertainment only).
+      </p>
+    </div>
+
+    <div class="rule-box disclaimer">
+      <h2>⚠️ Disclaimer</h2>
+      <p>
+        This game is for demonstration and entertainment purposes only.
+        Face similarity is not identity recognition.
+        Data is used only during the fest.
+      </p>
+    </div>
+
+    <button id="startGameBtn">START GAME 🚀</button>
+
+  </div>
+
+  <script src="2.js"></script>
+</body>
+</html>

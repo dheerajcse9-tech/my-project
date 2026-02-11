@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Hand Cricket</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="3.css">
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <strong id="playerName">Player</strong> |
+    <span id="playerBranch">Branch</span>
+  </div>
+  <div>
+    Runs: <span id="runs">0</span> |
+    Balls: <span id="balls">0</span> |
+    SR: <span id="sr">0.00</span>
+  </div>
+</div>
+
+<div class="game-container">
+
+  <!-- PLAYER PANEL -->
+  <div class="panel">
+    <h2>🧍 Player</h2>
+
+    <div class="camera-box">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <p id="fingerCount">Press Start Detecting</p>
+
+    <button id="detectBtn" class="detect-btn">
+      ▶ Start Detecting
+    </button>
+
+    <!-- Offline Backup Buttons -->
+    <div class="offline-controls">
+      <button onclick="manualPlay(1)">1</button>
+      <button onclick="manualPlay(2)">2</button>
+      <button onclick="manualPlay(3)">3</button>
+      <button onclick="manualPlay(4)">4</button>
+      <button onclick="manualPlay(5)">5</button>
+      <button onclick="manualPlay(6)">6</button>
+    </div>
+
+    <button id="faceBtn"
+            class="face-btn"
+            onclick="goToFace()"
+            style="display:none;">
+      👁 Face Matching
+    </button>
+  </div>
+
+  <!-- STATUS PANEL -->
+  <div class="panel">
+    <h2>🎯 Match Status</h2>
+    <p id="statusText">Game Ready</p>
+    <p><b>AI Phase:</b> <span id="aiPhase">Early Game</span></p>
+  </div>
+
+  <!-- AI PANEL -->
+  <div class="panel">
+    <h2>🤖 AI</h2>
+    <div class="ai-box">
+      <img id="aiHandImage" style="display:none;">
+      <p id="aiMoveText">Waiting...</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="leaderboard">
+  <h2>📊 Leaderboard</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Runs</th>
+        <th>Balls</th>
+        <th>SR</th>
+      </tr>
+    </thead>
+    <tbody id="leaderboardBody"></tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script src="camera.js"></script>
+<script src="3.js"></script>
+
+</body>
+</html>

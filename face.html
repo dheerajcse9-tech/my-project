@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Face Matching</title>
+  <link rel="stylesheet" href="face.css">
+</head>
+<body>
+
+<div class="container">
+  <h1>👁️ Face Matching</h1>
+
+  <!-- ONLY ONE CAMERA -->
+  <video id="video" autoplay muted playsinline></video>
+
+  <button id="captureBtn">📸 Capture Face</button>
+
+  <div id="resultBox" style="display:none;">
+    <h2>You resemble</h2>
+    <img id="matchImg">
+    <h3 id="matchName"></h3>
+  </div>
+
+  <button class="backBtn" onclick="goBack()">⬅ Back</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="face.js"></script>
+
+</body>
+</html>
