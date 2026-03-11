@@ -1,99 +1,398 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AI Hand Cricket</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="3.css">
+<meta charset="UTF-8">
+<title>AI Hand Cricket</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#FFD700;--c:#00f5ff;--r:#ff3860;--gr:#00e676;--bg:#060b14;--p:rgba(255,255,255,.05);--b:rgba(255,255,255,.12)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:#fff;font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 10% 10%,rgba(0,245,255,.07),transparent 50%),radial-gradient(ellipse at 90% 90%,rgba(255,56,96,.07),transparent 50%);pointer-events:none}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;background:rgba(0,0,0,.6);border-bottom:1px solid var(--b);backdrop-filter:blur(10px);position:relative;z-index:10}
+.logo{font-family:'Orbitron',monospace;font-size:18px;color:var(--g);letter-spacing:2px}
+.scores{display:flex;gap:22px}
+.sc{text-align:center}
+.sc-l{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase}
+.sc-v{font-family:'Orbitron',monospace;font-size:22px;color:var(--c);transition:.3s}
+.sc-v.flash{color:var(--gr);transform:scale(1.4)}
+.pinfo{text-align:right}.pname{color:var(--g);font-weight:700;font-size:13px}.pbranch{color:rgba(255,255,255,.4);font-size:11px}
+.grid{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:14px;padding:14px 18px;max-width:1300px;margin:0 auto;position:relative;z-index:5}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--p);border:1px solid var(--b);border-radius:18px;padding:16px;backdrop-filter:blur(8px);position:relative;overflow:hidden}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.5}
+.ptitle{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--g);text-align:center;margin-bottom:12px}
+.cam-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}
+#video,#canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#video{z-index:1}#canvas{z-index:2}
+.corner{position:absolute;inset:0;z-index:3;pointer-events:none;border:2px solid rgba(0,245,255,.2);border-radius:12px}
+.corner::before,.corner::after{content:'';position:absolute;width:20px;height:20px;border-color:var(--c);border-style:solid}
+.corner::before{top:7px;left:7px;border-width:2px 0 0 2px}.corner::after{bottom:7px;right:7px;border-width:0 2px 2px 0}
+.conf-bar-wrap{margin-top:8px;background:rgba(0,0,0,.3);border-radius:6px;overflow:hidden;height:6px}
+.conf-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--c),var(--gr));transition:width .15s;border-radius:6px}
+.hand-show{margin-top:8px;background:rgba(0,0,0,.4);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:center;gap:12px;min-height:72px}
+.hnum{font-family:'Orbitron',monospace;font-size:44px;color:var(--c);line-height:1}
+.himg{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,245,255,.5))}
+.hlabel{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-top:2px}
+.hconf{font-size:11px;color:var(--gr);margin-top:2px;font-weight:600;min-height:16px}
+.dbtn{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:linear-gradient(90deg,#00b4d8,#00f5ff);color:#000;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:1px}
+.dbtn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,245,255,.4)}.dbtn:disabled{background:#333;color:#555;transform:none;box-shadow:none;cursor:not-allowed}
+.offline{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}
+.obtn{padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-family:'Orbitron',monospace;font-size:15px;cursor:pointer;transition:.2s}
+.obtn:hover:not(:disabled){background:var(--g);color:#000;border-color:var(--g)}.obtn:disabled{opacity:.3;cursor:not-allowed}
+.fbtn{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:none;background:linear-gradient(90deg,#ff416c,#ff4b2b);color:#fff;font-family:'Orbitron',monospace;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 25px rgba(255,65,108,.45);display:none;transition:.2s}
+.fbtn:hover{transform:translateY(-2px)}
+.status-box{background:rgba(0,0,0,.4);border-radius:12px;padding:16px;text-align:center;min-height:160px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.smain{font-family:'Orbitron',monospace;font-size:15px;min-height:44px;display:flex;align-items:center;justify-content:center;transition:.3s;line-height:1.3}
+.smain.run{color:var(--gr)}.smain.out{color:var(--r);animation:shake .5s}
+.phase{display:inline-block;padding:3px 12px;border-radius:20px;font-size:10px;letter-spacing:2px;font-family:'Orbitron',monospace}
+.pe{background:rgba(0,245,255,.12);color:var(--c);border:1px solid var(--c)}.pm{background:rgba(255,165,0,.12);color:orange;border:1px solid orange}.pd{background:rgba(255,56,96,.12);color:var(--r);border:1px solid var(--r)}
+.bhist{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;min-height:30px;margin-top:6px;max-height:90px;overflow-y:auto}
+.bdot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Orbitron',monospace;animation:pop .3s;flex-shrink:0}
+.bdot.run{background:rgba(0,230,118,.18);border:2px solid var(--gr);color:var(--gr)}.bdot.out{background:rgba(255,56,96,.18);border:2px solid var(--r);color:var(--r)}
+.ai-box{background:rgba(0,0,0,.4);border-radius:12px;padding:16px;text-align:center;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.aimg{width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(255,215,0,.4))}
+.anum{font-family:'Orbitron',monospace;font-size:48px;font-weight:900;color:var(--g)}
+.await{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px}
+.dots{display:flex;gap:5px;justify-content:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:think .8s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+.lb{max-width:1300px;margin:0 auto 20px;padding:0 18px;position:relative;z-index:5}
+.lbbox{background:var(--p);border:1px solid var(--b);border-radius:18px;padding:16px;backdrop-filter:blur(8px)}
+.lbtitle{font-family:'Orbitron',monospace;font-size:13px;letter-spacing:3px;color:var(--g);text-align:center;margin-bottom:10px}
+table{width:100%;border-collapse:collapse}
+th{padding:7px 10px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);border-bottom:1px solid var(--b);text-transform:uppercase}
+td{padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)}
+.r1 td:first-child{color:var(--g)}.r2 td:first-child{color:#C0C0C0}.r3 td:first-child{color:#CD7F32}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:22px}
+.overlay.on{display:flex}
+.ot{font-family:'Orbitron',monospace;font-size:64px;color:var(--r);text-shadow:0 0 50px rgba(255,56,96,.9);animation:shake .6s}
+.ostats{display:flex;gap:40px;text-align:center}
+.osv{font-family:'Orbitron',monospace;font-size:36px;color:var(--g)}
+.osl{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-top:4px}
+.obig{padding:14px 46px;border-radius:12px;border:none;background:linear-gradient(90deg,#ff416c,#ff4b2b);color:#fff;font-family:'Orbitron',monospace;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 10px 32px rgba(255,65,108,.6);transition:.2s}
+.obig:hover{transform:scale(1.05)}
+.float{position:fixed;font-family:'Orbitron',monospace;font-size:36px;font-weight:900;pointer-events:none;z-index:999;animation:floatUp 1s forwards}
+.frun{color:var(--gr);text-shadow:0 0 20px rgba(0,230,118,.8)}.fout{color:var(--r);text-shadow:0 0 20px rgba(255,56,96,.8)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-8px)}80%{transform:translateX(8px)}}
+@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes think{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:1}}
+@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-100px) scale(1.6);opacity:0}}
+</style>
 </head>
 <body>
 
-<div class="top-bar">
-  <div>
-    <strong id="playerName">Player</strong> |
-    <span id="playerBranch">Branch</span>
+<div class="overlay" id="ov">
+  <div class="ot">⚡ OUT!</div>
+  <div class="ostats">
+    <div><div class="osv" id="fR">0</div><div class="osl">RUNS</div></div>
+    <div><div class="osv" id="fB">0</div><div class="osl">BALLS</div></div>
+    <div><div class="osv" id="fS">—</div><div class="osl">SR</div></div>
   </div>
-  <div>
-    Runs: <span id="runs">0</span> |
-    Balls: <span id="balls">0</span> |
-    SR: <span id="sr">0.00</span>
-  </div>
+  <button class="obig" onclick="location.href='face.html'">👁 See Your Cricketer Twin →</button>
 </div>
 
-<div class="game-container">
+<div class="bar">
+  <div class="logo">🏏 AI CRICKET</div>
+  <div class="scores">
+    <div class="sc"><div class="sc-l">Runs</div><div class="sc-v" id="runs">0</div></div>
+    <div class="sc"><div class="sc-l">Balls</div><div class="sc-v" id="balls">0</div></div>
+    <div class="sc"><div class="sc-l">SR</div><div class="sc-v" id="sr">—</div></div>
+  </div>
+  <div class="pinfo"><div class="pname" id="pn">Player</div><div class="pbranch" id="pb">Branch</div></div>
+</div>
 
-  <!-- PLAYER PANEL -->
+<div class="grid">
+
   <div class="panel">
-    <h2>🧍 Player</h2>
-
-    <div class="camera-box">
+    <div class="ptitle">👁 YOUR HAND</div>
+    <div class="cam-wrap">
       <video id="video" autoplay muted playsinline></video>
       <canvas id="canvas"></canvas>
+      <div class="corner"></div>
     </div>
-
-    <p id="fingerCount">Press Start Detecting</p>
-
-    <button id="detectBtn" class="detect-btn">
-      ▶ Start Detecting
-    </button>
-
-    <!-- Offline Backup Buttons -->
-    <div class="offline-controls">
-      <button onclick="manualPlay(1)">1</button>
-      <button onclick="manualPlay(2)">2</button>
-      <button onclick="manualPlay(3)">3</button>
-      <button onclick="manualPlay(4)">4</button>
-      <button onclick="manualPlay(5)">5</button>
-      <button onclick="manualPlay(6)">6</button>
+    <div class="conf-bar-wrap"><div class="conf-bar" id="confBar"></div></div>
+    <div class="hand-show">
+      <div>
+        <div class="hnum" id="hnum">—</div>
+        <div class="hlabel">DETECTED</div>
+        <div class="hconf" id="hconf"></div>
+      </div>
+      <img id="himg" class="himg" style="display:none">
     </div>
-
-    <button id="faceBtn"
-            class="face-btn"
-            onclick="goToFace()"
-            style="display:none;">
-      👁 Face Matching
-    </button>
+    <button class="dbtn" id="dbtn">▶ START DETECTION</button>
+    <div class="offline">
+      <button class="obtn" onclick="manual(1)">1</button>
+      <button class="obtn" onclick="manual(2)">2</button>
+      <button class="obtn" onclick="manual(3)">3</button>
+      <button class="obtn" onclick="manual(4)">4</button>
+      <button class="obtn" onclick="manual(5)">5</button>
+      <button class="obtn" onclick="manual(6)">6</button>
+    </div>
+    <button class="fbtn" id="fb" onclick="location.href='face.html'">👁 See Your Cricketer Twin</button>
   </div>
 
-  <!-- STATUS PANEL -->
   <div class="panel">
-    <h2>🎯 Match Status</h2>
-    <p id="statusText">Game Ready</p>
-    <p><b>AI Phase:</b> <span id="aiPhase">Early Game</span></p>
+    <div class="ptitle">🎯 MATCH STATUS</div>
+    <div class="status-box">
+      <div class="smain" id="st">Ready to Play</div>
+      <span class="phase pe" id="ph">EARLY GAME</span>
+      <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-top:6px">BALL HISTORY</div>
+      <div class="bhist" id="bh"></div>
+    </div>
+    <button class="fbtn" id="fb2" onclick="location.href='face.html'">👁 See Your Cricketer Twin</button>
   </div>
 
-  <!-- AI PANEL -->
   <div class="panel">
-    <h2>🤖 AI</h2>
-    <div class="ai-box">
-      <img id="aiHandImage" style="display:none;">
-      <p id="aiMoveText">Waiting...</p>
+    <div class="ptitle">🤖 AI MOVE</div>
+    <div class="ai-box" id="aibox">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="await">Waiting for your move...</div>
     </div>
   </div>
 
 </div>
 
-<div class="leaderboard">
-  <h2>📊 Leaderboard</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Runs</th>
-        <th>Balls</th>
-        <th>SR</th>
-      </tr>
-    </thead>
-    <tbody id="leaderboardBody"></tbody>
-  </table>
+<div class="lb">
+  <div class="lbbox">
+    <div class="lbtitle">📊 LEADERBOARD</div>
+    <table>
+      <thead><tr><th>#</th><th>Player</th><th>Runs</th><th>Balls</th><th>SR</th></tr></thead>
+      <tbody id="lbb"></tbody>
+    </table>
+  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
 
-<script src="camera.js"></script>
-<script src="3.js"></script>
+<script>
+// ── PLAYER ──
+const player = JSON.parse(localStorage.getItem("currentPlayer")) || {name:"Guest",branch:"N/A"};
+document.getElementById("pn").textContent = player.name;
+document.getElementById("pb").textContent = player.branch;
 
+// ── GAME STATE ──
+let runs=0, balls=0, freq=[0,0,0,0,0,0,0], hist=[], gameOver=false, active=false, stopped=false, cooldown=false;
+
+// ── AI ──
+const rnd = () => Math.ceil(Math.random()*6);
+function aiMove(){
+  const ph=document.getElementById("ph");
+  if(balls<=5)  { ph.className="phase pe"; ph.textContent="EARLY GAME"; return rnd(); }
+  if(balls<=12) { ph.className="phase pm"; ph.textContent="MID GAME";
+    const top=freq.indexOf(Math.max(...freq.slice(1)),1);
+    return Math.random()<.65?top:rnd(); }
+  ph.className="phase pd"; ph.textContent="DANGER ZONE";
+  const r=hist.slice(-3); return r.length?r[Math.floor(Math.random()*r.length)]:rnd();
+}
+
+// ── PLAY ──
+function play(n){
+  if(gameOver) return;
+  balls++; freq[n]++; hist.push(n);
+  const ai=aiMove();
+  document.getElementById("aibox").innerHTML=`
+    <img src="/hand-images/${ai}.png" class="aimg" id="aim" style="opacity:0;transform:scale(.3) rotateY(90deg)">
+    <div class="anum">${ai}</div><div class="await">AI PLAYED</div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const img=document.getElementById("aim");
+    if(img){img.style.transition="all .45s cubic-bezier(.34,1.56,.64,1)";img.style.opacity="1";img.style.transform="scale(1) rotateY(0)";}
+  }));
+  document.getElementById("hnum").textContent=n;
+  const hi=document.getElementById("himg"); hi.src=`${n}.png`; hi.style.display="block";
+  const d=document.createElement("div");
+  d.className=`bdot ${n===ai?'out':'run'}`; d.textContent=n===ai?"W":n;
+  document.getElementById("bh").appendChild(d);
+  document.getElementById("bh").scrollTop=9999;
+  const el=document.createElement("div");
+  el.className=`float ${n===ai?'fout':'frun'}`; el.textContent=n===ai?"OUT!":"+"+n;
+  el.style.cssText=`left:${innerWidth/2-40}px;top:${innerHeight/2}px`;
+  document.body.appendChild(el); setTimeout(()=>el.remove(),1000);
+  if(n===ai){
+    document.getElementById("st").textContent="💥 YOU ARE OUT!";
+    document.getElementById("st").className="smain out";
+    setTimeout(endGame,1500); return;
+  }
+  runs+=n;
+  document.getElementById("st").textContent=`+${n} Run${n>1?'s':''}! 🏏`;
+  document.getElementById("st").className="smain run";
+  const rv=document.getElementById("runs"); rv.textContent=runs; rv.classList.add("flash"); setTimeout(()=>rv.classList.remove("flash"),300);
+  document.getElementById("balls").textContent=balls;
+  document.getElementById("sr").textContent=((runs/balls)*100).toFixed(2);
+}
+
+function manual(n){ if(!gameOver){ BUF.length=0; cooldown=false; play(n); } }
+
+function endGame(){
+  gameOver=true; stopped=true;
+  document.querySelectorAll(".obtn").forEach(b=>b.disabled=true);
+  document.getElementById("dbtn").style.display="none";
+  ["fb","fb2"].forEach(id=>document.getElementById(id).style.display="block");
+  const sr=balls?((runs/balls)*100).toFixed(2):"0.00";
+  const lb=JSON.parse(localStorage.getItem("leaderboard"))||[];
+  lb.push({name:player.name,runs,balls,sr});
+  localStorage.setItem("leaderboard",JSON.stringify(lb)); renderLB();
+  document.getElementById("fR").textContent=runs;
+  document.getElementById("fB").textContent=balls;
+  document.getElementById("fS").textContent=sr;
+  document.getElementById("ov").classList.add("on");
+}
+
+function renderLB(){
+  const lb=(JSON.parse(localStorage.getItem("leaderboard"))||[]).sort((a,b)=>b.runs-a.runs||b.sr-a.sr||a.balls-b.balls);
+  document.getElementById("lbb").innerHTML=lb.map((p,i)=>`
+    <tr class="${i<3?'r'+(i+1):''}">
+      <td>${["🥇","🥈","🥉"][i]||i+1}</td>
+      <td style="text-align:left">${p.name}</td>
+      <td>${p.runs}</td><td>${p.balls}</td><td>${p.sr}</td></tr>`).join('');
+}
+
+// ── STABILITY BUFFER: 10 frames, 7 must agree ──
+const BUF=[], BUF_SIZE=10, VOTE_NEED=7;
+let lastFired=-1;
+
+function stableVote(n){
+  BUF.push(n); if(BUF.length>BUF_SIZE) BUF.shift();
+  if(BUF.length<BUF_SIZE) return -1;
+  const c=Array(8).fill(0); BUF.forEach(v=>{ if(v>=0&&v<=7)c[v]++; });
+  const best=c.indexOf(Math.max(...c));
+  return c[best]>=VOTE_NEED?best:-1;
+}
+
+function tryFire(n){
+  const stable=stableVote(n);
+  document.getElementById("confBar").style.width=(stable>0?100:Math.min(BUF.length*10,90))+"%";
+  document.getElementById("hconf").textContent=stable>0?`✓ LOCKED: ${stable}`:"Stabilizing...";
+  if(!active||gameOver||cooldown||stable<1||stable===lastFired) return;
+  lastFired=stable; cooldown=true; BUF.length=0;
+  play(stable);
+  setTimeout(()=>{ cooldown=false; lastFired=-1; },1800);
+}
+
+// ════════════════════════════════════════════════════
+//  FINGER DETECTION — BOTH JOINTS MUST BE STRAIGHT
+//
+//  MediaPipe hand landmarks per finger:
+//
+//  TIP  (4,8,12,16,20)
+//   |
+//  DIP  (3,7,11,15,19)  ← 2nd tip line / top knuckle
+//   |
+//  PIP  (2,6,10,14,18)  ← 1st knuckle
+//   |
+//  MCP  (1,5, 9,13,17)  ← base knuckle
+//
+//  Rule: count finger ONLY if BOTH angles are > 150°
+//    PIP angle = MCP → PIP → DIP
+//    DIP angle = PIP → DIP → TIP  ← if tip is curled, this fails
+// ════════════════════════════════════════════════════
+
+// Dot-product angle at joint B between A-B-C
+function angle3(A,B,C){
+  const ax=A.x-B.x, ay=A.y-B.y, az=(A.z||0)-(B.z||0);
+  const cx=C.x-B.x, cy=C.y-B.y, cz=(C.z||0)-(B.z||0);
+  const dot=ax*cx+ay*cy+az*cz;
+  const m=Math.sqrt((ax*ax+ay*ay+az*az)*(cx*cx+cy*cy+cz*cz));
+  return m?Math.acos(Math.min(1,Math.max(-1,dot/m)))*180/Math.PI:180;
+}
+
+// [MCP, PIP, DIP, TIP] for each finger
+const FMAP=[[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]];
+
+function isFingerUp(lm,[mcp,pip,dip,tip]){
+  const pipAngle=angle3(lm[mcp],lm[pip],lm[dip]); // 1st knuckle
+  const dipAngle=angle3(lm[pip],lm[dip],lm[tip]); // 2nd knuckle (tip line)
+  return pipAngle>150 && dipAngle>150; // BOTH must be straight to count
+}
+
+function isThumbOpen(lm){
+  const ip   = angle3(lm[2],lm[3],lm[4]);   // IP joint angle
+  const mcp  = angle3(lm[1],lm[2],lm[3]);   // MCP joint angle
+  const dist = Math.hypot(lm[4].x-lm[5].x, lm[4].y-lm[5].y); // 2D dist tip to index base
+  // Use 2D distance (more reliable than just X) + angle check
+  return (ip>150 && mcp>135 && dist>0.08);
+}
+
+function isThumbsUp(lm){
+  if(!isThumbOpen(lm)) return false;
+  return FMAP.every(f=>!isFingerUp(lm,f));
+}
+
+function countFingers(lm){
+  if(isThumbsUp(lm)) return 6;
+  let c=isThumbOpen(lm)?1:0;
+  FMAP.forEach(f=>{ if(isFingerUp(lm,f)) c++; });
+  return Math.min(c,6);
+}
+
+// ── MEDIAPIPE ──
+const video=document.getElementById("video");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+canvas.width=320; canvas.height=240;
+
+const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`});
+hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.8,minTrackingConfidence:0.75});
+
+hands.onResults(results=>{
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(results.image,0,0,canvas.width,canvas.height);
+
+  if(!results.multiHandLandmarks?.length){
+    document.getElementById("hnum").textContent="—";
+    document.getElementById("hconf").textContent="Show your hand";
+    document.getElementById("confBar").style.width="0%";
+    BUF.length=0; return;
+  }
+
+  const lm=results.multiHandLandmarks[0];
+  const sx=canvas.width, sy=canvas.height;
+
+  // Draw skeleton
+  drawConnectors(ctx,lm,HAND_CONNECTIONS,{color:"#00f5ff",lineWidth:2});
+  drawLandmarks(ctx,lm,{color:"#FFD700",lineWidth:1,radius:3});
+
+  // Highlight DIP joints (2nd tip line) in RED — so player can see what's being checked
+  [7,11,15,19].forEach(i=>{
+    ctx.beginPath();
+    ctx.arc(lm[i].x*sx,lm[i].y*sy,6,0,Math.PI*2);
+    ctx.fillStyle="rgba(255,56,96,0.85)"; ctx.fill();
+    ctx.strokeStyle="#fff"; ctx.lineWidth=1.5; ctx.stroke();
+  });
+
+  // Highlight TIPs in green when straight, red when bent
+  FMAP.forEach(([mcp,pip,dip,tip])=>{
+    const dipAngle=angle3(lm[pip],lm[dip],lm[tip]);
+    ctx.beginPath();
+    ctx.arc(lm[tip].x*sx,lm[tip].y*sy,5,0,Math.PI*2);
+    ctx.fillStyle=dipAngle>150?"rgba(0,230,118,0.9)":"rgba(255,56,96,0.9)";
+    ctx.fill();
+  });
+
+  const n=countFingers(lm);
+  document.getElementById("hnum").textContent=n>0?n:"✊";
+  const hi=document.getElementById("himg");
+  if(n>0){hi.src=`${n}.png`;hi.style.display="block";}else hi.style.display="none";
+
+  tryFire(n>0?n:0);
+});
+
+const cam=new Camera(video,{
+  onFrame:async()=>{ if(!stopped) await hands.send({image:video}); },
+  width:320,height:240
+});
+cam.start();
+
+document.getElementById("dbtn").onclick=()=>{
+  active=true;
+  document.getElementById("dbtn").disabled=true;
+  document.getElementById("dbtn").textContent="🎮 Detection Active";
+};
+
+renderLB();
+</script>
 </body>
 </html>

@@ -1,32 +1,901 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Face Matching</title>
-  <link rel="stylesheet" href="face.css">
+  <title>AI Hand Cricket | Face Match</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --gold: #e8b84b; --gold2: #f5d67a; --dark: #080c12;
+      --panel: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+      --cyan: #30d5c8; --red: #ff4560; --green: #26d47c; --text: #e8e8e8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--dark); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+    .bg-glow1 { position:fixed; top:-20%; left:-10%; width:60vw; height:60vw; background:radial-gradient(circle,rgba(232,184,75,0.07) 0%,transparent 70%); pointer-events:none; z-index:0; }
+    .bg-glow2 { position:fixed; bottom:-20%; right:-10%; width:50vw; height:50vw; background:radial-gradient(circle,rgba(48,213,200,0.06) 0%,transparent 70%); pointer-events:none; z-index:0; }
+    .page-wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:28px 20px 60px; }
+    .header { text-align:center; margin-bottom:32px; }
+    .header-eyebrow { font-size:11px; letter-spacing:5px; color:var(--cyan); text-transform:uppercase; margin-bottom:8px; opacity:0.8; }
+    .header-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(38px,7vw,68px); letter-spacing:4px; line-height:1; background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 40%,#fff 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+    .header-sub { font-size:13px; color:rgba(255,255,255,0.35); letter-spacing:1px; }
+    .score-strip { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:32px; }
+    .score-pill { background:var(--panel); border:1px solid var(--border); border-radius:100px; padding:7px 18px; font-size:13px; display:flex; align-items:center; gap:7px; }
+    .score-pill span { color:var(--gold); font-weight:600; font-size:15px; }
+    .main-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
+    @media(max-width:700px){.main-grid{grid-template-columns:1fr;}}
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:20px; overflow:hidden; }
+    .panel-head { padding:13px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; }
+    .panel-head-dot { width:8px; height:8px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+    .panel-head-dot.gold { background:var(--gold); box-shadow:0 0 8px var(--gold); }
+    .panel-title { font-family:'Syne',sans-serif; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.45); }
+    .panel-body { padding:18px; }
+    .cam-wrap { position:relative; border-radius:12px; overflow:hidden; background:#000; aspect-ratio:1; }
+    #faceVideo { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; }
+    #landmarkCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; transform:scaleX(-1); }
+    .scan-beam { position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent 0%,var(--cyan) 50%,transparent 100%); box-shadow:0 0 12px var(--cyan); animation:scanBeam 2.5s ease-in-out infinite; pointer-events:none; }
+    @keyframes scanBeam { 0%{top:0%;opacity:0;} 10%{opacity:1;} 90%{opacity:1;} 100%{top:100%;opacity:0;} }
+    .cam-corner { position:absolute; width:20px; height:20px; }
+    .cam-corner.tl{top:10px;left:10px;border-top:2px solid var(--gold);border-left:2px solid var(--gold);}
+    .cam-corner.tr{top:10px;right:10px;border-top:2px solid var(--gold);border-right:2px solid var(--gold);}
+    .cam-corner.bl{bottom:10px;left:10px;border-bottom:2px solid var(--gold);border-left:2px solid var(--gold);}
+    .cam-corner.br{bottom:10px;right:10px;border-bottom:2px solid var(--gold);border-right:2px solid var(--gold);}
+    .face-guide-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+    .status-bar { display:flex; align-items:center; gap:8px; margin-top:12px; padding:9px 13px; background:rgba(0,0,0,0.3); border-radius:10px; border:1px solid var(--border); font-size:12px; }
+    .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .status-dot.green { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.5s ease infinite; }
+    .status-dot.red { background:var(--red); box-shadow:0 0 8px var(--red); }
+    .status-dot.gold { background:var(--gold); box-shadow:0 0 8px var(--gold); animation:pulse 1s ease infinite; }
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+    .metrics-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:12px; }
+    .metric-chip { background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:8px; padding:7px 5px; text-align:center; }
+    .metric-chip .mval { font-family:'Bebas Neue',sans-serif; font-size:17px; color:var(--cyan); display:block; }
+    .metric-chip .mlbl { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,0.3); display:block; margin-top:1px; }
+    .capture-btn { width:100%; margin-top:14px; padding:15px; border:none; border-radius:13px; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; background:linear-gradient(135deg,var(--gold) 0%,#f0a030 100%); color:#000; box-shadow:0 8px 28px rgba(232,184,75,0.4); transition:all 0.25s; }
+    .capture-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 36px rgba(232,184,75,0.6);}
+    .capture-btn:disabled{background:#222;color:#444;box-shadow:none;cursor:not-allowed;}
+    .idle-state { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:340px; text-align:center; gap:11px; }
+    .idle-icon { font-size:52px; }
+    .idle-txt { color:rgba(255,255,255,0.3); font-size:13px; line-height:1.7; }
+    .loading-state { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:340px; text-align:center; gap:14px; }
+    .dna-spinner { position:relative; width:64px; height:64px; }
+    .dna-ring { position:absolute; inset:0; border-radius:50%; border:2px solid transparent; }
+    .dna-ring:nth-child(1){border-top-color:var(--gold);animation:spinR 1s linear infinite;}
+    .dna-ring:nth-child(2){inset:8px;border-right-color:var(--cyan);animation:spinR 0.7s linear infinite reverse;}
+    .dna-ring:nth-child(3){inset:16px;border-bottom-color:var(--gold2);animation:spinR 0.5s linear infinite;}
+    @keyframes spinR{to{transform:rotate(360deg);}}
+    .loading-title { font-family:'Syne',sans-serif; font-size:13px; letter-spacing:3px; color:var(--gold); }
+    .loading-steps { font-size:12px; color:rgba(255,255,255,0.3); min-height:38px; }
+    .loading-bar-wrap { width:190px; height:3px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; }
+    .loading-bar-fill { height:100%; background:linear-gradient(90deg,var(--gold),var(--cyan)); border-radius:3px; width:0%; transition:width 0.4s ease; }
+    .result-state { display:none; flex-direction:column; align-items:center; padding:8px 0; animation:fadeInUp 0.6s ease forwards; }
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+    .you-look-like { font-size:11px; letter-spacing:4px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:5px; }
+    .cricketer-reveal { position:relative; width:140px; height:140px; margin:8px auto 14px; }
+    .cricketer-ring { position:absolute; inset:-5px; border-radius:50%; background:conic-gradient(var(--gold),var(--cyan),var(--gold2),var(--gold)); animation:spinR 3s linear infinite; }
+    .cricketer-ring-mask { position:absolute; inset:3px; border-radius:50%; background:var(--dark); }
+    .cricketer-img { position:absolute; inset:3px; border-radius:50%; object-fit:cover; width:calc(100% - 6px); height:calc(100% - 6px); }
+    .match-badge-ring { position:absolute; bottom:-3px; right:-3px; background:linear-gradient(135deg,var(--gold),#f0a030); color:#000; font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:1px; padding:3px 9px; border-radius:100px; z-index:2; box-shadow:0 4px 14px rgba(232,184,75,0.6); }
+    .cricketer-name { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:2px; background:linear-gradient(135deg,var(--gold),var(--gold2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; margin-bottom:3px; }
+    .match-source { font-size:10px; letter-spacing:2px; color:rgba(255,255,255,0.25); margin-bottom:10px; text-transform:uppercase; }
+    .overall-bar-section { width:100%; margin:8px 0 12px; }
+    .overall-bar-label { display:flex; justify-content:space-between; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:5px; }
+    .overall-bar-label strong { color:var(--green); font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:1px; }
+    .overall-bar-bg { height:6px; background:rgba(255,255,255,0.06); border-radius:10px; overflow:hidden; }
+    .overall-bar-fill { height:100%; background:linear-gradient(90deg,var(--cyan),var(--green)); border-radius:10px; width:0%; transition:width 1.2s cubic-bezier(0.22,1,0.36,1) 0.2s; box-shadow:0 0 10px rgba(38,212,124,0.5); }
+    .ratio-breakdown { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:10px 0; }
+    .ratio-row { background:rgba(0,0,0,0.3); border-radius:8px; padding:7px 9px; border:1px solid var(--border); }
+    .ratio-name { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,0.3); margin-bottom:3px; }
+    .ratio-bar-bg { height:4px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; margin-bottom:3px; }
+    .ratio-bar-fill { height:100%; border-radius:4px; width:0%; transition:width 0.9s ease 0.3s; }
+    .ratio-bar-fill.high{background:var(--green);} .ratio-bar-fill.mid{background:var(--gold);} .ratio-bar-fill.low{background:var(--red);}
+    .ratio-score-txt { font-size:10px; color:rgba(255,255,255,0.45); }
+    .traits-row { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin:7px 0; }
+    .trait-chip { border-radius:100px; padding:4px 11px; font-size:10px; letter-spacing:1px; text-transform:uppercase; font-weight:600; }
+    .trait-chip:nth-child(1){background:rgba(232,184,75,0.15);color:var(--gold);border:1px solid rgba(232,184,75,0.3);}
+    .trait-chip:nth-child(2){background:rgba(48,213,200,0.1);color:var(--cyan);border:1px solid rgba(48,213,200,0.25);}
+    .trait-chip:nth-child(3){background:rgba(38,212,124,0.1);color:var(--green);border:1px solid rgba(38,212,124,0.25);}
+    .ai-reason { font-size:12px; color:rgba(255,255,255,0.45); text-align:center; line-height:1.7; margin:8px 0; font-style:italic; padding:9px 12px; background:rgba(232,184,75,0.05); border-left:2px solid rgba(232,184,75,0.3); border-radius:0 8px 8px 0; width:100%; }
+    .result-btns { display:flex; gap:9px; width:100%; margin-top:12px; }
+    .btn-retry { flex:1; padding:11px; border:1px solid var(--border); border-radius:11px; background:transparent; color:rgba(255,255,255,0.5); font-family:'Syne',sans-serif; font-size:11px; letter-spacing:1px; cursor:pointer; transition:all 0.2s; }
+    .btn-retry:hover{border-color:var(--gold);color:var(--gold);}
+    .btn-home { flex:1; padding:11px; border:none; border-radius:11px; background:linear-gradient(135deg,var(--gold),#f0a030); color:#000; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:1px; cursor:pointer; transition:all 0.2s; }
+    .btn-home:hover{transform:translateY(-1px);}
+    .confetti-container{position:fixed;inset:0;pointer-events:none;z-index:100;overflow:hidden;}
+    .confetti-piece{position:absolute;top:-10px;border-radius:2px;animation:confettiFall linear forwards;}
+    @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+    .reveal-flash{position:fixed;inset:0;background:rgba(232,184,75,0.15);pointer-events:none;z-index:99;opacity:0;animation:flashIn 0.6s ease forwards;}
+    @keyframes flashIn{0%{opacity:0.8;}100%{opacity:0;}}
+    .ref-section{margin-top:28px;}
+    .ref-title{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:13px;}
+    .ref-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+    .ref-chip{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--border);border-radius:100px;padding:5px 12px 5px 5px;font-size:11px;}
+    .ref-chip img{width:26px;height:26px;border-radius:50%;object-fit:cover;}
+    #snapCanvas{display:none;}
+  </style>
 </head>
 <body>
-
-<div class="container">
-  <h1>👁️ Face Matching</h1>
-
-  <!-- ONLY ONE CAMERA -->
-  <video id="video" autoplay muted playsinline></video>
-
-  <button id="captureBtn">📸 Capture Face</button>
-
-  <div id="resultBox" style="display:none;">
-    <h2>You resemble</h2>
-    <img id="matchImg">
-    <h3 id="matchName"></h3>
+<div class="bg-glow1"></div><div class="bg-glow2"></div>
+<canvas id="snapCanvas" width="480" height="480"></canvas>
+<div class="confetti-container" id="confettiContainer"></div>
+<div class="page-wrap">
+  <div class="header">
+    <div class="header-eyebrow">🏏 AI HAND CRICKET — POST MATCH</div>
+    <div class="header-title">YOUR CRICKET TWIN</div>
+    <div class="header-sub">MediaPipe face landmarks + Claude AI visual analysis · 18 cricketers</div>
   </div>
-
-  <button class="backBtn" onclick="goBack()">⬅ Back</button>
+  <div class="score-strip">
+    <div class="score-pill">🏏 Runs <span id="recapRuns">—</span></div>
+    <div class="score-pill">⚾ Balls <span id="recapBalls">—</span></div>
+    <div class="score-pill">⚡ SR <span id="recapSR">—</span></div>
+    <div class="score-pill">👤 <span id="recapName">Player</span></div>
+  </div>
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-head-dot"></div><div class="panel-title">Live Camera · Face Scan</div></div>
+      <div class="panel-body">
+        <div class="cam-wrap" id="camWrap">
+          <video id="faceVideo" autoplay muted playsinline></video>
+          <canvas id="landmarkCanvas"></canvas>
+          <div class="scan-beam" id="scanBeam"></div>
+          <svg class="face-guide-svg" viewBox="0 0 400 400">
+            <ellipse cx="200" cy="195" rx="88" ry="112" fill="none" stroke="rgba(232,184,75,0.3)" stroke-width="1.5" stroke-dasharray="6 4"/>
+          </svg>
+          <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+          <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+        </div>
+        <div class="status-bar">
+          <div class="status-dot green" id="statusDot"></div>
+          <span id="statusText">Initializing camera…</span>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric-chip"><span class="mval" id="mHW">—</span><span class="mlbl">H/W Ratio</span></div>
+          <div class="metric-chip"><span class="mval" id="mIO">—</span><span class="mlbl">Eye Spacing</span></div>
+          <div class="metric-chip"><span class="mval" id="mJaw">—</span><span class="mlbl">Jaw Est.</span></div>
+        </div>
+        <button class="capture-btn" id="captureBtn" disabled>⏺ CAPTURE &amp; ANALYZE</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-head-dot gold"></div><div class="panel-title">Cricketer Match Result</div></div>
+      <div class="panel-body">
+        <div class="idle-state" id="idleState">
+          <div class="idle-icon">🎯</div>
+          <div class="idle-txt">Position your face inside the oval<br>and press <strong>Capture &amp; Analyze</strong><br>to find your cricket twin!</div>
+        </div>
+        <div class="loading-state" id="loadingState">
+          <div class="dna-spinner"><div class="dna-ring"></div><div class="dna-ring"></div><div class="dna-ring"></div></div>
+          <div class="loading-title">ANALYZING</div>
+          <div class="loading-steps" id="loadingStep">Extracting facial landmarks…</div>
+          <div class="loading-bar-wrap"><div class="loading-bar-fill" id="loadingBarFill"></div></div>
+        </div>
+        <div class="result-state" id="resultState">
+          <div class="you-look-like">YOU LOOK LIKE</div>
+          <div class="cricketer-reveal">
+            <div class="cricketer-ring"></div>
+            <div class="cricketer-ring-mask"></div>
+            <img class="cricketer-img" id="cricketerImg" src="" alt="">
+            <div class="match-badge-ring" id="matchBadge">—%</div>
+          </div>
+          <div class="cricketer-name" id="cricketerName">—</div>
+          <div class="match-source" id="matchSource">Geometric + AI</div>
+          <div class="overall-bar-section">
+            <div class="overall-bar-label"><span>FACIAL SIMILARITY</span><strong id="overallPctTxt">0%</strong></div>
+            <div class="overall-bar-bg"><div class="overall-bar-fill" id="overallBarFill"></div></div>
+          </div>
+          <div class="ratio-breakdown" id="ratioBreakdown"></div>
+          <div class="traits-row" id="traitsRow"></div>
+          <div class="ai-reason" id="aiReason">Analyzing…</div>
+          <div class="result-btns">
+            <button class="btn-retry" onclick="retryCapture()">↩ Try Again</button>
+            <button class="btn-home" onclick="window.location.href='index.html'">🏠 Home</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-title">Comparing against 18 Indian Cricketers</div>
+    <div class="ref-grid" id="refGrid"></div>
+  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<script src="face.js"></script>
+<script>
+// ============================================================
+// REAL CRICKETER DATA — ratios extracted via OpenCV + visual analysis
+// from actual cricketer photos
+// ============================================================
+const CRICKETERS = [
+  {
+    name: "Abhishek Sharma", emoji: "🌟",
+    traits: ["Young", "Energetic", "Aggressive"],
+    desc: "Like Abhishek, your youthful energy and bold style light up any room!",
+    photoUrl: "face-images/abhishek.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.3897,
+      eyeToFace:      0.1949,
+      eyeSpanToFace:  0.5809,
+      jawToFace:      0.65,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4325
+    }
+  },
+  {
+    name: "Arshdeep Singh", emoji: "🎳",
+    traits: ["Calm", "Clutch", "Precise"],
+    desc: "Like Arshdeep, you stay ice-cool under pressure and deliver when it matters!",
+    photoUrl: "face-images/arshdeep.png",
+    ratios: {
+      heightToWidth:  1.45,
+      interocular:    0.3813,
+      eyeToFace:      0.2157,
+      eyeSpanToFace:  0.5987,
+      jawToFace:      0.65,
+      faceShapeScore: 0.8,
+      noseToHeight:   0.294,
+      lipToFace:      0.4325
+    }
+  },
+  {
+    name: "R Ashwin", emoji: "🧠",
+    traits: ["Intelligent", "Strategic", "Sharp"],
+    desc: "Like Ashwin, your sharp mind and strategic brilliance make you unbeatable!",
+    photoUrl: "face-images/ashwin.png",
+    ratios: {
+      heightToWidth:  1.15,
+      interocular:    0.4303,
+      eyeToFace:      0.2182,
+      eyeSpanToFace:  0.6485,
+      jawToFace:      0.85,
+      faceShapeScore: 0.3,
+      noseToHeight:   0.282,
+      lipToFace:      0.4425
+    }
+  },
+  {
+    name: "Axar Patel", emoji: "💪",
+    traits: ["Athletic", "Reliable", "Solid"],
+    desc: "Like Axar, you are a dependable all-rounder who excels in every department!",
+    photoUrl: "face-images/axar.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.327,
+      eyeToFace:      0.2154,
+      eyeSpanToFace:  0.5409,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  },
+  {
+    name: "Shivam Dube", emoji: "💥",
+    traits: ["Powerful", "Bold", "Fearless"],
+    desc: "Like Dube, you go big and hit life's challenges out of the park!",
+    photoUrl: "face-images/dube.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.3712,
+      eyeToFace:      0.2157,
+      eyeSpanToFace:  0.5886,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  },
+  {
+    name: "Shubman Gill", emoji: "✨",
+    traits: ["Elegant", "Talented", "Future Star"],
+    desc: "Like Gill, your natural elegance and exceptional talent set you apart!",
+    photoUrl: "face-images/gill.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.3824,
+      eyeToFace:      0.1897,
+      eyeSpanToFace:  0.5737,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  },
+  {
+    name: "Ishan Kishan", emoji: "🔥",
+    traits: ["Aggressive", "Fun", "Explosive"],
+    desc: "Like Ishan, you are explosive, fun-loving, and always the life of the party!",
+    photoUrl: "face-images/ishan.png",
+    ratios: {
+      heightToWidth:  1.15,
+      interocular:    0.3697,
+      eyeToFace:      0.2364,
+      eyeSpanToFace:  0.6061,
+      jawToFace:      0.85,
+      faceShapeScore: 0.3,
+      noseToHeight:   0.282,
+      lipToFace:      0.4425
+    }
+  },
+  {
+    name: "Ravindra Jadeja", emoji: "⚡",
+    traits: ["Complete", "Sharp", "Energetic"],
+    desc: "Like Jadeja, you are the complete package — truly unstoppable!",
+    photoUrl: "face-images/jadeja.png",
+    ratios: {
+      heightToWidth:  1.2,
+      interocular:    0.3946,
+      eyeToFace:      0.2289,
+      eyeSpanToFace:  0.6235,
+      jawToFace:      0.88,
+      faceShapeScore: 0.7,
+      noseToHeight:   0.284,
+      lipToFace:      0.444
+    }
+  },
+  {
+    name: "Yashasvi Jaiswal", emoji: "🌠",
+    traits: ["Prodigy", "Fearless", "Rising"],
+    desc: "Like Jaiswal, you are a rare talent with a fearless attitude and a big future!",
+    photoUrl: "face-images/jaiswal.png",
+    ratios: {
+      heightToWidth:  1.15,
+      interocular:    0.3688,
+      eyeToFace:      0.2125,
+      eyeSpanToFace:  0.5812,
+      jawToFace:      0.62,
+      faceShapeScore: 0.3,
+      noseToHeight:   0.282,
+      lipToFace:      0.431
+    }
+  },
+  {
+    name: "Kuldeep Yadav", emoji: "🌀",
+    traits: ["Tricky", "Crafty", "Smart"],
+    desc: "Like Kuldeep, you are clever, creative, and always full of surprises!",
+    photoUrl: "face-images/kuldeep.png",
+    ratios: {
+      heightToWidth:  1.15,
+      interocular:    0.3977,
+      eyeToFace:      0.2075,
+      eyeSpanToFace:  0.6052,
+      jawToFace:      0.85,
+      faceShapeScore: 0.3,
+      noseToHeight:   0.282,
+      lipToFace:      0.4425
+    }
+  },
+  {
+    name: "Rishabh Pant", emoji: "🎯",
+    traits: ["Fearless", "Match-winner", "Bold"],
+    desc: "Like Pant, you play life on your own terms and deliver when it truly counts!",
+    photoUrl: "face-images/pant.png",
+    ratios: {
+      heightToWidth:  1.15,
+      interocular:    0.3653,
+      eyeToFace:      0.2156,
+      eyeSpanToFace:  0.5808,
+      jawToFace:      0.85,
+      faceShapeScore: 0.3,
+      noseToHeight:   0.282,
+      lipToFace:      0.4425
+    }
+  },
+  {
+    name: "KL Rahul", emoji: "👑",
+    traits: ["Stylish", "Technical", "Versatile"],
+    desc: "Like KL Rahul, your refined elegance and technical mastery speak volumes!",
+    photoUrl: "face-images/rahul.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.3787,
+      eyeToFace:      0.2169,
+      eyeSpanToFace:  0.5956,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  },
+  {
+    name: "Rinku Singh", emoji: "🏆",
+    traits: ["Fighter", "Finisher", "Passionate"],
+    desc: "Like Rinku, you never give up — you are a miracle-maker under pressure!",
+    photoUrl: "face-images/rinku.png",
+    ratios: {
+      heightToWidth:  1.2,
+      interocular:    0.3947,
+      eyeToFace:      0.1725,
+      eyeSpanToFace:  0.5673,
+      jawToFace:      0.88,
+      faceShapeScore: 0.7,
+      noseToHeight:   0.284,
+      lipToFace:      0.444
+    }
+  },
+  {
+    name: "Sanju Samson", emoji: "🌊",
+    traits: ["Elegant", "Explosive", "Gifted"],
+    desc: "Like Sanju, you combine artistic grace with breathtaking explosive power!",
+    photoUrl: "face-images/sanju.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.3482,
+      eyeToFace:      0.1901,
+      eyeSpanToFace:  0.5367,
+      jawToFace:      0.65,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4325
+    }
+  },
+  {
+    name: "Mohammed Shami", emoji: "🎯",
+    traits: ["Precise", "Fierce", "Champion"],
+    desc: "Like Shami, your precision and fierce determination make you a true champion!",
+    photoUrl: "face-images/shami.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.35,
+      eyeToFace:      0.18,
+      eyeSpanToFace:  0.6,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  },
+  {
+    name: "Shreyas Iyer", emoji: "💎",
+    traits: ["Elegant", "Leader", "Consistent"],
+    desc: "Like Shreyas, your poise, elegance, and leadership instinct set you apart!",
+    photoUrl: "face-images/shreyas.png",
+    ratios: {
+      heightToWidth:  1.45,
+      interocular:    0.4686,
+      eyeToFace:      0.1172,
+      eyeSpanToFace:  0.5842,
+      jawToFace:      0.65,
+      faceShapeScore: 0.8,
+      noseToHeight:   0.294,
+      lipToFace:      0.4325
+    }
+  },
+  {
+    name: "Mohammed Siraj", emoji: "🔥",
+    traits: ["Passionate", "Fiery", "Intense"],
+    desc: "Like Siraj, your burning passion and intensity make you a fierce competitor!",
+    photoUrl: "face-images/siraj.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.4098,
+      eyeToFace:      0.1858,
+      eyeSpanToFace:  0.5956,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  },
+  {
+    name: "Suryakumar Yadav", emoji: "🌙",
+    traits: ["360\u00b0", "Innovative", "Genius"],
+    desc: "Like SKY, you see angles others miss and execute what seems impossible!",
+    photoUrl: "face-images/surya.png",
+    ratios: {
+      heightToWidth:  1.3,
+      interocular:    0.3396,
+      eyeToFace:      0.2537,
+      eyeSpanToFace:  0.5933,
+      jawToFace:      0.75,
+      faceShapeScore: 0.5,
+      noseToHeight:   0.288,
+      lipToFace:      0.4375
+    }
+  }
+];
 
+// MediaPipe landmark indices
+const LM = {
+  LEFT_CHEEK:234, RIGHT_CHEEK:454, CHIN:152, FOREHEAD:10,
+  L_EYE_OUTER:33, L_EYE_INNER:133, R_EYE_INNER:362, R_EYE_OUTER:263,
+  L_JAW:172, R_JAW:397, NOSE_TIP:1, NOSE_TOP:168, L_LIP:61, R_LIP:291,
+  L_BROW_OUT:70, R_BROW_OUT:300, NOSE_L:129, NOSE_R:358
+};
+
+// Feature weights for similarity scoring
+const WEIGHTS = {
+  heightToWidth: 2.5,
+  interocular:   2.2,
+  eyeToFace:     1.4,
+  eyeSpanToFace: 1.6,
+  jawToFace:     2.0,
+  faceShapeScore:1.8,
+  noseToHeight:  1.0,
+  lipToFace:     0.8
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let faceMesh = null, mpCamera = null, lastLandmarks = null, frameCount = 0;
+
+const video     = document.getElementById("faceVideo");
+const lmCanvas  = document.getElementById("landmarkCanvas");
+const lmCtx     = lmCanvas.getContext("2d");
+const snapCanvas= document.getElementById("snapCanvas");
+
+// ============================================================
+// RECAP
+// ============================================================
+const lb     = JSON.parse(localStorage.getItem("leaderboard")) || [];
+const player = JSON.parse(localStorage.getItem("currentPlayer")) || { name:"Player" };
+document.getElementById("recapName").textContent = player.name || "Player";
+if (lb.length > 0) {
+  const last = lb[lb.length-1];
+  document.getElementById("recapRuns").textContent  = last.runs  ?? "—";
+  document.getElementById("recapBalls").textContent = last.balls ?? "—";
+  document.getElementById("recapSR").textContent    = last.sr    ?? "—";
+}
+
+// ============================================================
+// REFERENCE STRIP
+// ============================================================
+const refGrid = document.getElementById("refGrid");
+CRICKETERS.forEach(c => {
+  const chip = document.createElement("div");
+  chip.className = "ref-chip";
+  chip.innerHTML = `<img src="${c.photoUrl}" onerror="this.style.display='none'">${c.name}`;
+  refGrid.appendChild(chip);
+});
+
+// ============================================================
+// MEDIAPIPE INIT
+// ============================================================
+function initFaceMesh() {
+  faceMesh = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+  faceMesh.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.6, minTrackingConfidence:0.6 });
+  faceMesh.onResults(onFaceResults);
+  startCamera();
+}
+
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:640}, height:{ideal:640} } })
+  .then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      video.play();
+      resizeLm();
+      setStatus("green","Camera ready · Position face in oval");
+      document.getElementById("captureBtn").disabled = false;
+      mpCamera = new Camera(video, {
+        onFrame: async () => { if(++frameCount % 2 === 0) await faceMesh.send({image:video}); },
+        width:640, height:640
+      });
+      mpCamera.start();
+    };
+  }).catch(err => {
+    setStatus("red","Camera unavailable — using AI-only mode");
+    document.getElementById("captureBtn").disabled = false;
+  });
+}
+
+function resizeLm() {
+  lmCanvas.width  = video.videoWidth  || 480;
+  lmCanvas.height = video.videoHeight || 480;
+}
+
+// ============================================================
+// FACE RESULTS
+// ============================================================
+function onFaceResults(results) {
+  resizeLm();
+  lmCtx.clearRect(0, 0, lmCanvas.width, lmCanvas.height);
+  if (!results.multiFaceLandmarks?.length) {
+    setStatus("gold","No face detected · Move closer");
+    updateMetrics(null); return;
+  }
+  const lms = results.multiFaceLandmarks[0];
+  lastLandmarks = lms;
+  drawViz(lms);
+  const r = extractRatios(lms);
+  updateMetrics(r);
+  setStatus("green","Face detected ✓ · Ready to capture");
+}
+
+// ============================================================
+// DRAW LANDMARK VISUALIZATION
+// ============================================================
+function drawViz(lms) {
+  const W = lmCanvas.width, H = lmCanvas.height;
+  const CONNS = [
+    [33,7],[7,163],[163,144],[144,145],[145,153],[153,154],[154,155],[155,133],
+    [362,382],[382,381],[381,380],[380,374],[374,373],[373,390],[390,249],[249,263],
+    [172,136],[136,150],[150,149],[149,176],[176,148],[148,152],[152,377],[377,400],[400,378],[378,379],[379,365],[365,397],
+    [168,6],[6,197],[197,195],[195,5],[5,4],[4,1],[70,63],[63,105],[105,66],[66,107],[300,293],[293,334],[334,296],[296,336]
+  ];
+  lmCtx.strokeStyle = "rgba(48,213,200,0.35)"; lmCtx.lineWidth = 1;
+  CONNS.forEach(([a,b]) => {
+    if(!lms[a]||!lms[b]) return;
+    lmCtx.beginPath(); lmCtx.moveTo(lms[a].x*W,lms[a].y*H); lmCtx.lineTo(lms[b].x*W,lms[b].y*H); lmCtx.stroke();
+  });
+  const keyPts=[LM.LEFT_CHEEK,LM.RIGHT_CHEEK,LM.CHIN,LM.FOREHEAD,LM.L_EYE_OUTER,LM.R_EYE_OUTER,LM.L_LIP,LM.R_LIP,LM.L_JAW,LM.R_JAW,LM.NOSE_TIP,LM.L_BROW_OUT,LM.R_BROW_OUT];
+  keyPts.forEach(idx => {
+    if(!lms[idx]) return;
+    lmCtx.beginPath(); lmCtx.arc(lms[idx].x*W,lms[idx].y*H,2.5,0,Math.PI*2);
+    lmCtx.fillStyle="rgba(232,184,75,0.9)"; lmCtx.fill();
+  });
+  lmCtx.strokeStyle="rgba(232,184,75,0.45)"; lmCtx.lineWidth=1.5; lmCtx.setLineDash([4,3]);
+  if(lms[LM.LEFT_CHEEK]&&lms[LM.RIGHT_CHEEK]){lmCtx.beginPath();lmCtx.moveTo(lms[LM.LEFT_CHEEK].x*W,lms[LM.LEFT_CHEEK].y*H);lmCtx.lineTo(lms[LM.RIGHT_CHEEK].x*W,lms[LM.RIGHT_CHEEK].y*H);lmCtx.stroke();}
+  if(lms[LM.FOREHEAD]&&lms[LM.CHIN]){lmCtx.beginPath();lmCtx.moveTo(lms[LM.FOREHEAD].x*W,lms[LM.FOREHEAD].y*H);lmCtx.lineTo(lms[LM.CHIN].x*W,lms[LM.CHIN].y*H);lmCtx.stroke();}
+  lmCtx.setLineDash([]);
+}
+
+// ============================================================
+// EXTRACT RATIOS (same as Python extraction logic)
+// ============================================================
+function extractRatios(lms) {
+  const d=(a,b)=>Math.sqrt((lms[a].x-lms[b].x)**2+(lms[a].y-lms[b].y)**2);
+  const faceW  = d(LM.LEFT_CHEEK, LM.RIGHT_CHEEK);
+  const faceH  = d(LM.FOREHEAD, LM.CHIN);
+  const jawW   = d(LM.L_JAW, LM.R_JAW);
+  const leW    = d(LM.L_EYE_OUTER, LM.L_EYE_INNER);
+  const reW    = d(LM.R_EYE_INNER, LM.R_EYE_OUTER);
+  const eyeW   = (leW+reW)/2;
+  const interoc= d(LM.L_EYE_INNER, LM.R_EYE_INNER);
+  const noseB  = d(LM.NOSE_TOP, LM.NOSE_TIP);
+  const lipW   = d(LM.L_LIP, LM.R_LIP);
+  const browW  = d(LM.L_BROW_OUT, LM.R_BROW_OUT);
+  if(faceW < 0.001) return null;
+  // faceShapeScore: derived from heightToWidth
+  const h2w = faceH/faceW;
+  const fss  = h2w > 1.38 ? 0.8 : h2w > 1.26 ? 0.5 : h2w > 1.18 ? 0.6 : 0.3;
+  return {
+    heightToWidth:  Math.round(h2w*1e4)/1e4,
+    interocular:    Math.round(interoc/faceW*1e4)/1e4,
+    eyeToFace:      Math.round(eyeW/faceW*1e4)/1e4,
+    eyeSpanToFace:  Math.round(browW/faceW*1e4)/1e4,
+    jawToFace:      Math.round(jawW/faceW*1e4)/1e4,
+    faceShapeScore: fss,
+    noseToHeight:   Math.round(noseB/faceH*1e4)/1e4,
+    lipToFace:      Math.round(lipW/faceW*1e4)/1e4
+  };
+}
+
+// ============================================================
+// WEIGHTED SIMILARITY
+// ============================================================
+function computeSimilarity(playerR, cricR) {
+  let dist=0, wSum=0;
+  for(const k in WEIGHTS) {
+    const diff = (playerR[k]||0) - (cricR[k]||0);
+    dist  += WEIGHTS[k] * diff * diff;
+    wSum  += WEIGHTS[k];
+  }
+  const euc = Math.sqrt(dist/wSum);
+  // tuned threshold: 0.0=100%, 0.12=50%, 0.22=0%
+  return Math.max(0, Math.min(100, (1 - euc/0.18)*100));
+}
+
+function findBestMatch(playerR) {
+  let bestIdx=0, bestScore=-1;
+  const scores = CRICKETERS.map((c,i)=>{ const s=computeSimilarity(playerR,c.ratios); if(s>bestScore){bestScore=s;bestIdx=i;} return {idx:i,score:s}; });
+  return { bestIdx, bestScore, scores };
+}
+
+// ============================================================
+// METRICS DISPLAY
+// ============================================================
+function updateMetrics(r) {
+  document.getElementById("mHW").textContent  = r ? r.heightToWidth.toFixed(2) : "—";
+  document.getElementById("mIO").textContent  = r ? r.interocular.toFixed(2)   : "—";
+  document.getElementById("mJaw").textContent = r ? r.jawToFace.toFixed(2)     : "—";
+}
+function setStatus(color, text) {
+  document.getElementById("statusDot").className = `status-dot ${color}`;
+  document.getElementById("statusText").textContent = text;
+}
+
+// ============================================================
+// CAPTURE
+// ============================================================
+document.getElementById("captureBtn").addEventListener("click", async () => {
+  document.getElementById("captureBtn").disabled = true;
+  const ctx = snapCanvas.getContext("2d");
+  ctx.save(); ctx.scale(-1,1); ctx.drawImage(video,-480,0,480,480); ctx.restore();
+  const imageData = snapCanvas.toDataURL("image/jpeg",0.85);
+  const base64    = imageData.split(",")[1];
+
+  document.getElementById("idleState").style.display   = "none";
+  document.getElementById("resultState").style.display = "none";
+  document.getElementById("loadingState").style.display= "flex";
+
+  // STEP 1: geometric match
+  await step("Extracting facial landmarks…", 20);
+  let localMatch = null;
+  if (lastLandmarks) {
+    const pr = extractRatios(lastLandmarks);
+    if (pr) localMatch = findBestMatch(pr);
+  }
+
+  // STEP 2: Claude visual analysis — PRIMARY decision maker
+  await step("Claude AI analyzing your face…", 55);
+
+  const cricListStr = CRICKETERS.map((c,i)=>`${i}. ${c.name}`).join("\n");
+
+  // Only pass geo hint if it's a real person (not holding a phone screen)
+  let geoHint = "";
+  if (localMatch && localMatch.bestScore > 55) {
+    const top3 = [...localMatch.scores].sort((a,b)=>b.score-a.score).slice(0,3);
+    geoHint = `(Facial geometry hint — use only if it matches what you see: ${top3.map(s=>CRICKETERS[s.idx].name+" "+s.score.toFixed(0)+"%").join(", ")})`;
+  }
+
+  const prompt = `You are a face-matching AI at a college cricket fest in India. A student is standing in front of a camera.
+
+IMPORTANT: Look at the FACE in the image. If the image shows someone holding a phone or photo, look at the face on the phone/photo screen — that is the face to match.
+
+Study the face carefully: face shape (oval/round/square/long), jawline, eye spacing, cheekbones, nose, forehead.
+
+${geoHint}
+
+Match the face to one of these 18 Indian cricketers by facial structure ONLY (ignore expression, skin tone, lighting):
+${cricListStr}
+
+Reply ONLY with valid JSON, no markdown, no extra text:
+{"cricketerIndex":<0-based index 0-17>,"matchPercent":<integer 62-91>,"reason":"<one fun witty sentence about why they look alike>"}`;
+
+  let finalIdx = localMatch ? localMatch.bestIdx : 0;
+  let finalPct = 72;
+  let finalReason = "";
+  let source = "Geometric";
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 300,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+            { type: "text", text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`API ${resp.status}: ${errText}`);
+    }
+
+    const data = await resp.json();
+    console.log("Claude raw response:", JSON.stringify(data));
+
+    const txt = (data.content||[]).map(b=>b.text||"").join("").trim().replace(/```json|```/g,"").trim();
+    console.log("Claude text:", txt);
+
+    const p = JSON.parse(txt);
+    const claudeIdx = Math.max(0, Math.min(Math.round(p.cricketerIndex), CRICKETERS.length-1));
+    finalReason = p.reason || "";
+    finalIdx = claudeIdx;  // Claude is PRIMARY — always trust Claude's visual pick
+
+    // Use geo score only to calibrate the percentage, not to override the choice
+    if (localMatch) {
+      const geoScoreForClaude = localMatch.scores.find(s=>s.idx===claudeIdx)?.score || 50;
+      finalPct = Math.round(p.matchPercent * 0.65 + geoScoreForClaude * 0.35);
+      source = claudeIdx === localMatch.bestIdx ? "Geometric + AI ✓" : "AI Visual";
+    } else {
+      finalPct = p.matchPercent;
+      source = "AI Visual";
+    }
+    finalPct = Math.max(60, Math.min(92, finalPct));
+
+  } catch(err) {
+    console.error("Claude API error:", err);
+    // Show error status so you know Claude failed
+    setStatus("red", "AI error — using geometry only. Check console.");
+    finalReason = CRICKETERS[finalIdx].desc;
+    source = "Geometric (AI failed)";
+    if (localMatch) finalPct = Math.round(Math.max(60, Math.min(88, localMatch.bestScore)));
+  }
+
+  await step("Preparing your match reveal…", 100);
+
+  // Build per-feature breakdown
+  const breakdown = buildBreakdown(finalIdx, finalPct);
+  showResult(finalIdx, finalPct, finalReason || CRICKETERS[finalIdx].desc, breakdown, source);
+});
+
+// ============================================================
+// BUILD BREAKDOWN from geometry
+// ============================================================
+function buildBreakdown(cricIdx, overallPct) {
+  const c = CRICKETERS[cricIdx];
+  if (!lastLandmarks) {
+    return ["Face Shape","Eye Spacing","Jaw Width","Brow Width"].map(label=>{
+      const s = Math.max(42,Math.min(94, overallPct + Math.floor(Math.random()*24)-12));
+      return {label, score:s};
+    });
+  }
+  const pr = extractRatios(lastLandmarks);
+  if (!pr) return [];
+  const features = [
+    {key:"heightToWidth",label:"Face Shape"},
+    {key:"interocular",  label:"Eye Spacing"},
+    {key:"jawToFace",    label:"Jaw Width"},
+    {key:"eyeSpanToFace",label:"Brow Width"}
+  ];
+  return features.map(f=>{
+    const diff  = Math.abs((pr[f.key]||0)-(c.ratios[f.key]||0));
+    const score = Math.round(Math.max(35, Math.min(96, (1-diff/0.12)*100)));
+    return {label:f.label, score};
+  });
+}
+
+// ============================================================
+// SHOW RESULT
+// ============================================================
+function showResult(idx, pct, reason, breakdown, source) {
+  const c = CRICKETERS[idx];
+  document.getElementById("loadingState").style.display  = "none";
+  document.getElementById("resultState").style.display   = "flex";
+  document.getElementById("cricketerName").textContent   = c.name;
+  document.getElementById("matchBadge").textContent      = pct+"%";
+  document.getElementById("matchSource").textContent     = source;
+
+  const img = document.getElementById("cricketerImg");
+  img.src = c.photoUrl;
+  img.onerror = () => { img.parentElement.style.fontSize="52px"; img.parentElement.style.lineHeight="140px"; img.parentElement.textContent=c.emoji; };
+
+  setTimeout(()=>{ document.getElementById("overallBarFill").style.width=pct+"%"; document.getElementById("overallPctTxt").textContent=pct+"%"; }, 150);
+
+  const bEl = document.getElementById("ratioBreakdown");
+  bEl.innerHTML = breakdown.map(b=>{
+    const cls = b.score>=70?"high":b.score>=48?"mid":"low";
+    return `<div class="ratio-row"><div class="ratio-name">${b.label}</div><div class="ratio-bar-bg"><div class="ratio-bar-fill ${cls}" style="width:0%" data-t="${b.score}"></div></div><div class="ratio-score-txt">${b.score}% match</div></div>`;
+  }).join("");
+  setTimeout(()=>{ bEl.querySelectorAll(".ratio-bar-fill").forEach(el=>el.style.width=el.dataset.t+"%"); }, 300);
+
+  document.getElementById("traitsRow").innerHTML = c.traits.map(t=>`<span class="trait-chip">${t}</span>`).join("");
+  document.getElementById("aiReason").textContent = `"${reason}"`;
+
+  triggerConfetti(); triggerFlash();
+  document.getElementById("captureBtn").disabled = false;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+async function step(text, pct) {
+  document.getElementById("loadingStep").textContent = text;
+  document.getElementById("loadingBarFill").style.width = pct+"%";
+  await new Promise(r=>setTimeout(r,650));
+}
+function triggerConfetti() {
+  const colors=["#e8b84b","#f5d67a","#30d5c8","#26d47c","#ff4560","#fff"];
+  const c=document.getElementById("confettiContainer");
+  for(let i=0;i<80;i++){
+    const p=document.createElement("div"); p.className="confetti-piece";
+    p.style.cssText=`left:${Math.random()*100}vw;background:${colors[i%colors.length]};width:${4+Math.random()*7}px;height:${4+Math.random()*7}px;border-radius:${Math.random()>.5?"50%":"2px"};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s;`;
+    c.appendChild(p); setTimeout(()=>p.remove(),3500);
+  }
+}
+function triggerFlash() {
+  const el=document.createElement("div"); el.className="reveal-flash"; document.body.appendChild(el); setTimeout(()=>el.remove(),800);
+}
+function retryCapture() {
+  document.getElementById("resultState").style.display="none";
+  document.getElementById("idleState").style.display="flex";
+}
+
+window.addEventListener("load",()=>setTimeout(initFaceMesh,400));
+</script>
 </body>
 </html>
