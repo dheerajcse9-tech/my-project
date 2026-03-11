@@ -7,6 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <!-- face-api.js: real neural face recognition (128-d embeddings) -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js" crossorigin="anonymous"></script>
   <style>
     :root {
       --gold: #e8b84b; --gold2: #f5d67a; --dark: #080c12;
@@ -298,7 +300,7 @@
   </style>
 </head>
 <body>
-<canvas id="snapCanvas" width="480" height="480"></canvas>
+<canvas id="snapCanvas" width="640" height="640"></canvas>
 <div class="bg-mesh"></div>
 <div class="bg-grid"></div>
 <div class="confetti-container" id="confettiContainer"></div>
@@ -309,7 +311,7 @@
   <div class="header">
     <div class="header-eyebrow">🏏 AI Hand Cricket — Post Match</div>
     <div class="header-title">Your Cricket<br>Twin</div>
-    <div class="header-sub">MediaPipe Face Landmarks + Claude AI · 18 Cricketers</div>
+    <div class="header-sub">MediaPipe · face-api.js Neural Embeddings · Claude Vision AI · 18 Cricketers</div>
   </div>
 
   <!-- SCORE STRIP -->
@@ -351,6 +353,7 @@
           <div class="metric-chip"><span class="mval" id="mHW">—</span><span class="mlbl">H/W Ratio</span></div>
           <div class="metric-chip"><span class="mval" id="mIO">—</span><span class="mlbl">Eye Spacing</span></div>
           <div class="metric-chip"><span class="mval" id="mJaw">—</span><span class="mlbl">Jaw Est.</span></div>
+          <div class="metric-chip" id="neuralChip" style="grid-column:1/-1;"><span class="mval" id="mNeural" style="font-size:13px;color:var(--gold);">Loading…</span><span class="mlbl">Neural Engine (128-D Face Embeddings)</span></div>
         </div>
         <button class="capture-btn" id="captureBtn" disabled>⏺ CAPTURE &amp; ANALYZE</button>
       </div>
@@ -569,15 +572,21 @@ const LM = {
 };
 
 const WEIGHTS = {
-  heightToWidth:2.5, interocular:2.2, eyeToFace:1.4,
-  eyeSpanToFace:1.6, jawToFace:2.0, faceShapeScore:1.8,
-  noseToHeight:1.0, lipToFace:0.8
+  heightToWidth:3.0, interocular:2.8, eyeToFace:1.6,
+  eyeSpanToFace:1.8, jawToFace:2.5, faceShapeScore:2.0,
+  noseToHeight:1.2, lipToFace:1.0
 };
 
 // ============================================================
 // STATE
 // ============================================================
 let faceMesh = null, mpCamera = null, lastLandmarks = null, frameCount = 0;
+
+// face-api.js state
+let faceApiReady = false;
+let cricketersEmbeddings = []; // [{idx, name, descriptor: Float32Array}]
+
+const FACEAPI_MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model";
 
 const video      = document.getElementById("faceVideo");
 const lmCanvas   = document.getElementById("landmarkCanvas");
@@ -609,17 +618,136 @@ CRICKETERS.forEach(c => {
 });
 
 // ============================================================
+// FACE-API.JS — Load models & compute cricketer embeddings
+// ============================================================
+async function loadFaceApiModels() {
+  const neuralEl = document.getElementById("mNeural");
+  try {
+    if(neuralEl) neuralEl.textContent = "Loading models…";
+    setStatus("gold", "Loading neural face recognition models…");
+    const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model";
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]);
+    if(neuralEl) neuralEl.textContent = "Computing embeddings…";
+    setStatus("gold", "Neural models loaded · Computing cricketer embeddings…");
+    await computeCricketersEmbeddings();
+    faceApiReady = true;
+    if(neuralEl) { neuralEl.textContent = `✓ ${cricketersEmbeddings.length}/18 Ready`; neuralEl.style.color = "var(--green)"; }
+    setStatus("green", "Neural face recognition ready ✓ · Position face in oval");
+    console.log("face-api.js ready with", cricketersEmbeddings.length, "cricketer embeddings");
+  } catch(err) {
+    console.warn("face-api.js failed to load — will use geometry + Claude only:", err);
+    faceApiReady = false;
+    if(neuralEl) { neuralEl.textContent = "Unavailable (geometry + AI mode)"; neuralEl.style.color = "var(--red)"; }
+    setStatus("green", "Camera ready · Position face in oval (geometry + AI mode)");
+  }
+}
+
+async function imgElementFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed: " + url));
+    // Add cache-busting to avoid CORS cached issues
+    img.src = url + (url.includes("?") ? "&" : "?") + "_cb=" + Date.now();
+  });
+}
+
+async function computeCricketersEmbeddings() {
+  const results = await Promise.allSettled(
+    CRICKETERS.map(async (c, idx) => {
+      try {
+        const img = await imgElementFromUrl(c.photoUrl);
+        const detection = await faceapi
+          .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        if (!detection) { console.warn("No face detected in", c.name); return null; }
+        return { idx, name: c.name, descriptor: detection.descriptor };
+      } catch(e) {
+        console.warn("Embedding failed for", c.name, e.message);
+        return null;
+      }
+    })
+  );
+  cricketersEmbeddings = results
+    .map(r => r.status === "fulfilled" ? r.value : null)
+    .filter(Boolean);
+  console.log(`Embeddings computed: ${cricketersEmbeddings.length}/${CRICKETERS.length} cricketers`);
+}
+
+// Cosine similarity between two Float32Array descriptors
+function cosineSimilarity(a, b) {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot   += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Euclidean distance (lower = more similar) — same as face-api uses internally
+function euclideanDistance(a, b) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2;
+  return Math.sqrt(sum);
+}
+
+// Run face-api matching on a canvas snapshot
+async function faceApiMatch(canvas) {
+  if (!faceApiReady || cricketersEmbeddings.length === 0) return null;
+  try {
+    const detection = await faceapi
+      .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+    if (!detection) { console.warn("face-api: no face detected in snapshot"); return null; }
+
+    const userDescriptor = detection.descriptor;
+    const scored = cricketersEmbeddings.map(ce => {
+      const eucDist = euclideanDistance(userDescriptor, ce.descriptor);
+      const cosim   = cosineSimilarity(userDescriptor, ce.descriptor);
+      // Convert euclidean distance to a 0-100 similarity score
+      // Typical face-api euclidean distance: <0.45 = same person, 0.6 = similar, >0.8 = different
+      const eucScore  = Math.max(0, Math.min(100, (1 - eucDist / 0.9) * 100));
+      // Cosine: 1 = identical, convert to 0-100
+      const cosScore  = Math.max(0, Math.min(100, cosim * 100));
+      // Blend: euclidean is primary for face recognition
+      const score = eucScore * 0.7 + cosScore * 0.3;
+      return { idx: ce.idx, name: ce.name, score, eucDist, cosim };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    console.log("face-api top 5:", scored.slice(0,5).map(s=>`${s.name}: ${s.score.toFixed(1)}% (euc:${s.eucDist.toFixed(3)})`));
+
+    return {
+      bestIdx:   scored[0].idx,
+      bestScore: scored[0].score,
+      scores:    scored
+    };
+  } catch(err) {
+    console.warn("face-api matching error:", err);
+    return null;
+  }
+}
+
+// ============================================================
 // MEDIAPIPE INIT
 // ============================================================
 function initFaceMesh() {
   faceMesh = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
-  faceMesh.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.6, minTrackingConfidence:0.6 });
+  faceMesh.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.75, minTrackingConfidence:0.75 });
   faceMesh.onResults(onFaceResults);
   startCamera();
 }
 
 function startCamera() {
-  navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:640}, height:{ideal:640} } })
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:1280}, height:{ideal:720} } })
   .then(stream => {
     video.srcObject = stream;
     video.onloadedmetadata = () => {
@@ -628,8 +756,8 @@ function startCamera() {
       setStatus("green","Camera ready · Position face in oval");
       document.getElementById("captureBtn").disabled = false;
       mpCamera = new Camera(video, {
-        onFrame: async () => { if(++frameCount % 2 === 0) await faceMesh.send({image:video}); },
-        width:640, height:640
+        onFrame: async () => { await faceMesh.send({image:video}); },
+        width:1280, height:720
       });
       mpCamera.start();
     };
@@ -721,17 +849,19 @@ function extractRatios(lms) {
 }
 
 // ============================================================
-// WEIGHTED SIMILARITY
+// WEIGHTED SIMILARITY — Gaussian kernel for smoother scoring
 // ============================================================
 function computeSimilarity(playerR, cricR) {
-  let dist=0, wSum=0;
+  let weightedSum = 0, wSum = 0;
   for(const k in WEIGHTS) {
     const diff = (playerR[k]||0) - (cricR[k]||0);
-    dist  += WEIGHTS[k] * diff * diff;
+    // Gaussian kernel: sigma tuned per feature importance
+    const sigma = 0.07 / Math.sqrt(WEIGHTS[k]);
+    const sim = Math.exp(-(diff*diff)/(2*sigma*sigma)) * 100;
+    weightedSum += WEIGHTS[k] * sim;
     wSum  += WEIGHTS[k];
   }
-  const euc = Math.sqrt(dist/wSum);
-  return Math.max(0, Math.min(100, (1 - euc/0.18)*100));
+  return Math.max(0, Math.min(100, weightedSum/wSum));
 }
 
 function findBestMatch(playerR) {
@@ -759,8 +889,9 @@ function setStatus(color, text) {
 document.getElementById("captureBtn").addEventListener("click", async () => {
   document.getElementById("captureBtn").disabled = true;
   const ctx = snapCanvas.getContext("2d");
-  ctx.save(); ctx.scale(-1,1); ctx.drawImage(video,-480,0,480,480); ctx.restore();
-  const imageData = snapCanvas.toDataURL("image/jpeg",0.85);
+  // Mirror the video (correct orientation), high quality capture
+  ctx.save(); ctx.scale(-1,1); ctx.drawImage(video,-snapCanvas.width,0,snapCanvas.width,snapCanvas.height); ctx.restore();
+  const imageData = snapCanvas.toDataURL("image/jpeg", 0.92);
   const base64    = imageData.split(",")[1];
 
   document.getElementById("idleState").style.display   = "none";
@@ -768,37 +899,114 @@ document.getElementById("captureBtn").addEventListener("click", async () => {
   document.getElementById("loadingState").style.display= "flex";
 
   // STEP 1: geometric match
-  await step("Extracting facial landmarks…", 20);
+  await step("Extracting & analyzing facial landmarks…", 15);
   let localMatch = null;
   if (lastLandmarks) {
     const pr = extractRatios(lastLandmarks);
     if (pr) localMatch = findBestMatch(pr);
   }
 
-  // STEP 2: Claude visual analysis
-  await step("Claude AI analyzing your face…", 55);
+  // STEP 1b: face-api.js neural embedding match (the key accuracy upgrade)
+  await step("Neural face recognition — computing 128-D embedding…", 30);
+  let neuralMatch = null;
+  try {
+    neuralMatch = await faceApiMatch(snapCanvas);
+  } catch(e) { console.warn("neural match failed:", e); }
 
-  const cricListStr = CRICKETERS.map((c,i)=>`${i}. ${c.name}`).join("\n");
-
-  let geoHint = "";
-  if (localMatch && localMatch.bestScore > 55) {
-    const top3 = [...localMatch.scores].sort((a,b)=>b.score-a.score).slice(0,3);
-    geoHint = `(Facial geometry hint — use only if it matches what you see: ${top3.map(s=>CRICKETERS[s.idx].name+" "+s.score.toFixed(0)+"%").join(", ")})`;
+  if (neuralMatch) {
+    console.log(`Neural match: ${CRICKETERS[neuralMatch.bestIdx].name} (${neuralMatch.bestScore.toFixed(1)}%)`);
   }
 
-  const prompt = `You are a face-matching AI at a college cricket fest in India. A student is standing in front of a camera.
+  // STEP 2: Load cricketer reference images as base64 for direct visual comparison
+  await step("Loading cricketer reference images…", 35);
 
-IMPORTANT: Look at the FACE in the image. If the image shows someone holding a phone or photo, look at the face on the phone/photo screen — that is the face to match.
+  async function imageUrlToBase64(url) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      return new Promise((res) => {
+        const reader = new FileReader();
+        reader.onloadend = () => res(reader.result.split(",")[1]);
+        reader.onerror = () => res(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch { return null; }
+  }
 
-Study the face carefully: face shape (oval/round/square/long), jawline, eye spacing, cheekbones, nose, forehead.
+  // Get top-5 candidates from geometry to compare visually
+  let top5Candidates = [];
+  if (localMatch) {
+    top5Candidates = [...localMatch.scores]
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,5)
+      .map(s=>s.idx);
+  } else {
+    top5Candidates = CRICKETERS.map((_,i)=>i).slice(0,5);
+  }
 
-${geoHint}
+  // Load all 18 cricketer images in parallel for full comparison
+  await step("Fetching cricketer face references…", 45);
+  const allImageB64 = await Promise.all(
+    CRICKETERS.map(c => imageUrlToBase64(c.photoUrl))
+  );
+  const availableCricketers = CRICKETERS.map((c,i)=>({...c, idx:i, b64:allImageB64[i]})).filter(c=>c.b64);
 
-Match the face to one of these 18 Indian cricketers by facial structure ONLY (ignore expression, skin tone, lighting):
-${cricListStr}
+  // STEP 3: Claude deep visual face comparison — user face vs ALL available cricketer photos
+  await step("Claude AI performing deep visual face match…", 60);
 
-Reply ONLY with valid JSON, no markdown, no extra text:
-{"cricketerIndex":<0-based index 0-17>,"matchPercent":<integer 62-91>,"reason":"<one fun witty sentence about why they look alike>"}`;
+  const cricListForPrompt = availableCricketers.map(c=>`Index ${c.idx}: ${c.name}`).join("\n");
+
+  let geoContext = "";
+  if (localMatch) {
+    const top3geo = [...localMatch.scores].sort((a,b)=>b.score-a.score).slice(0,3);
+    geoContext = `\n\nFacial geometry pre-analysis (soft hint):\n${top3geo.map(s=>`- ${CRICKETERS[s.idx].name}: ${s.score.toFixed(1)}%`).join("\n")}`;
+  }
+  if (neuralMatch) {
+    const top3neural = [...neuralMatch.scores].slice(0,3);
+    geoContext += `\n\nNeural face embedding match (128-D ResNet descriptor — strong signal):\n${top3neural.map(s=>`- ${s.name}: ${s.score.toFixed(1)}% similarity`).join("\n")}`;
+  }
+
+  // Build content array: user face + all available cricketer faces
+  const contentBlocks = [
+    {
+      type: "text",
+      text: `You are an expert forensic face-matching system. Your job is to find which Indian cricketer the FIRST image (the person in the camera) most resembles.
+
+TASK: Compare the FIRST image (user's face) against each of the following ${availableCricketers.length} cricketer face images provided in order.
+
+WHAT TO ANALYZE — examine these features systematically:
+1. FACE SHAPE: oval / round / square / heart / oblong / diamond
+2. FOREHEAD: width, height, prominence
+3. EYES: size, shape, spacing between eyes (narrow/wide), eye openness, brow arch
+4. NOSE: width, bridge height, tip shape, nostril flare
+5. CHEEKBONES: high/low, prominent/flat
+6. JAWLINE: sharp/soft, wide/narrow, square/round/pointed
+7. CHIN: shape and projection
+8. OVERALL PROPORTIONS: upper-to-lower face ratio, face width-to-height
+
+SCORING: For each feature, compare the user to each cricketer and score similarity 0-100. The overall match = weighted average.
+
+DO NOT be biased by skin tone, lighting, beard, or expression — focus ONLY on bone structure and facial geometry.
+
+Available cricketers (the images follow in order after the user's face):
+${cricListForPrompt}
+${geoContext}
+
+Reply ONLY with valid JSON (no markdown, no extra text):
+{"cricketerIndex":<exact 0-based index from the list above>,"matchPercent":<integer 65-93>,"reason":"<one punchy witty sentence about the specific facial feature that matches most>","featureMatch":"<the single strongest matching feature e.g. jawline, eye shape, cheekbones>"}`
+    },
+    // First image = user's face
+    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } }
+  ];
+
+  // Add all available cricketer images
+  availableCricketers.forEach(c => {
+    contentBlocks.push({
+      type: "image",
+      source: { type: "base64", media_type: "image/jpeg", data: c.b64 }
+    });
+  });
 
   let finalIdx = localMatch ? localMatch.bestIdx : 0;
   let finalPct = 72;
@@ -811,13 +1019,10 @@ Reply ONLY with valid JSON, no markdown, no extra text:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 300,
+        max_tokens: 400,
         messages: [{
           role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-            { type: "text", text: prompt }
-          ]
+          content: contentBlocks
         }]
       })
     });
@@ -834,25 +1039,56 @@ Reply ONLY with valid JSON, no markdown, no extra text:
     finalReason = p.reason || "";
     finalIdx = claudeIdx;
 
-    if (localMatch) {
+    // ── THREE-WAY FUSION: Neural (50%) + Claude Visual (35%) + Geometry (15%) ──
+    if (neuralMatch && localMatch) {
+      const neuralScoreForClaude  = neuralMatch.scores.find(s=>s.idx===claudeIdx)?.score || 50;
+      const geoScoreForClaude     = localMatch.scores.find(s=>s.idx===claudeIdx)?.score  || 50;
+      const neuralAgrees = claudeIdx === neuralMatch.bestIdx;
+      const geoAgrees    = claudeIdx === localMatch.bestIdx;
+      const agreementBoost = (neuralAgrees ? 3 : 0) + (geoAgrees ? 2 : 0);
+      finalPct = Math.round(
+        neuralScoreForClaude * 0.50 +
+        p.matchPercent       * 0.35 +
+        geoScoreForClaude    * 0.15
+      ) + agreementBoost;
+      if (neuralAgrees && geoAgrees) source = "Neural + Visual AI + Geometry ✓✓✓";
+      else if (neuralAgrees)          source = "Neural + Visual AI ✓✓";
+      else if (geoAgrees)             source = "Visual AI + Geometry ✓✓";
+      else                            source = "Visual AI (neural candidate)";
+    } else if (neuralMatch) {
+      const neuralScoreForClaude = neuralMatch.scores.find(s=>s.idx===claudeIdx)?.score || 50;
+      finalPct = Math.round(neuralScoreForClaude * 0.55 + p.matchPercent * 0.45);
+      source = claudeIdx === neuralMatch.bestIdx ? "Neural + Visual AI ✓✓" : "Visual AI override";
+    } else if (localMatch) {
+      // No neural — fall back to original Claude + geometry blend
       const geoScoreForClaude = localMatch.scores.find(s=>s.idx===claudeIdx)?.score || 50;
-      finalPct = Math.round(p.matchPercent * 0.65 + geoScoreForClaude * 0.35);
-      source = claudeIdx === localMatch.bestIdx ? "Geometric + AI ✓" : "AI Visual";
+      const agree = claudeIdx === localMatch.bestIdx;
+      finalPct = Math.round(p.matchPercent * (agree ? 0.70 : 0.80) + geoScoreForClaude * (agree ? 0.30 : 0.20));
+      source = agree ? "Visual AI + Geometry ✓✓" : "Visual AI (overrides geometry)";
     } else {
       finalPct = p.matchPercent;
-      source = "AI Visual";
+      source = "Visual AI (direct comparison)";
     }
-    finalPct = Math.max(60, Math.min(92, finalPct));
+    finalPct = Math.max(63, Math.min(93, finalPct));
 
   } catch(err) {
     console.error("Claude API error:", err);
-    setStatus("red", "AI error — using geometry only. Check console.");
-    finalReason = CRICKETERS[finalIdx].desc;
-    source = "Geometric (AI failed)";
-    if (localMatch) finalPct = Math.round(Math.max(60, Math.min(88, localMatch.bestScore)));
+    // If we have neural match, use it as primary fallback (much better than geometry alone)
+    if (neuralMatch) {
+      finalIdx = neuralMatch.bestIdx;
+      finalPct = Math.round(Math.max(63, Math.min(90, neuralMatch.bestScore)));
+      source   = "Neural Face Recognition (AI failed)";
+      finalReason = CRICKETERS[finalIdx].desc;
+      setStatus("gold", "Claude AI unavailable — using neural face recognition");
+    } else {
+      setStatus("red", "AI error — using geometry only. Check console.");
+      finalReason = CRICKETERS[finalIdx].desc;
+      source = "Geometric (AI failed)";
+      if (localMatch) finalPct = Math.round(Math.max(60, Math.min(88, localMatch.bestScore)));
+    }
   }
 
-  await step("Preparing your match reveal…", 100);
+  await step("Finalizing your cricket twin reveal…", 100);
 
   const breakdown = buildBreakdown(finalIdx, finalPct);
   showResult(finalIdx, finalPct, finalReason || CRICKETERS[finalIdx].desc, breakdown, source);
@@ -940,7 +1176,11 @@ function retryCapture() {
   document.getElementById("idleState").style.display="flex";
 }
 
-window.addEventListener("load",()=>setTimeout(initFaceMesh,400));
+window.addEventListener("load", () => {
+  setTimeout(initFaceMesh, 400);
+  // Load face-api models in parallel (takes ~3-5s on first load)
+  setTimeout(loadFaceApiModels, 800);
+});
 </script>
 </body>
 </html>
