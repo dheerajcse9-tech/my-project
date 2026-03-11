@@ -6,83 +6,262 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
+/* ── ORIGINAL VARIABLES (unchanged for JS compatibility) ── */
 :root{--g:#FFD700;--c:#00f5ff;--r:#ff3860;--gr:#00e676;--bg:#060b14;--p:rgba(255,255,255,.05);--b:rgba(255,255,255,.12)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:#fff;font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 10% 10%,rgba(0,245,255,.07),transparent 50%),radial-gradient(ellipse at 90% 90%,rgba(255,56,96,.07),transparent 50%);pointer-events:none}
-.bar{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;background:rgba(0,0,0,.6);border-bottom:1px solid var(--b);backdrop-filter:blur(10px);position:relative;z-index:10}
-.logo{font-family:'Orbitron',monospace;font-size:18px;color:var(--g);letter-spacing:2px}
-.scores{display:flex;gap:22px}
-.sc{text-align:center}
-.sc-l{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase}
-.sc-v{font-family:'Orbitron',monospace;font-size:22px;color:var(--c);transition:.3s}
-.sc-v.flash{color:var(--gr);transform:scale(1.4)}
-.pinfo{text-align:right}.pname{color:var(--g);font-weight:700;font-size:13px}.pbranch{color:rgba(255,255,255,.4);font-size:11px}
-.grid{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:14px;padding:14px 18px;max-width:1300px;margin:0 auto;position:relative;z-index:5}
+
+/* ── ENHANCED BACKGROUND ── */
+body::before{content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse at 0% 0%,   rgba(0,245,255,.09),  transparent 45%),
+    radial-gradient(ellipse at 100% 100%,rgba(255,56,96,.08),  transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(255,215,0,.04),  transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* Animated grid lines */
+body::after{content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,245,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,.025) 1px, transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;z-index:0}
+
+/* ── NAVBAR ── */
+.bar{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;
+  background:rgba(0,0,0,.7);border-bottom:1px solid rgba(255,215,0,.18);
+  backdrop-filter:blur(20px);position:sticky;top:0;z-index:10;
+  box-shadow:0 4px 30px rgba(0,0,0,.6)}
+
+.logo{font-family:'Orbitron',monospace;font-size:17px;color:var(--g);letter-spacing:3px;
+  display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--g);
+  box-shadow:0 0 10px var(--g);animation:pulse-dot 1.5s ease infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+
+.scores{display:flex;gap:28px}
+.sc{text-align:center;position:relative}
+.sc::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+  width:20px;height:1px;background:var(--c);opacity:.3}
+.sc-l{font-size:9px;color:rgba(255,255,255,.35);letter-spacing:3px;text-transform:uppercase}
+.sc-v{font-family:'Orbitron',monospace;font-size:24px;color:var(--c);transition:.3s;line-height:1.1}
+.sc-v.flash{color:var(--gr);transform:scale(1.5);text-shadow:0 0 20px var(--gr)}
+
+.pinfo{text-align:right}
+.pname{color:var(--g);font-weight:700;font-size:13px;letter-spacing:.5px}
+.pbranch{color:rgba(255,255,255,.35);font-size:10px;letter-spacing:1px;margin-top:1px}
+
+/* ── MAIN GRID ── */
+.grid{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:16px;
+  padding:16px 20px;max-width:1300px;margin:0 auto;position:relative;z-index:5}
 @media(max-width:880px){.grid{grid-template-columns:1fr}}
-.panel{background:var(--p);border:1px solid var(--b);border-radius:18px;padding:16px;backdrop-filter:blur(8px);position:relative;overflow:hidden}
-.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.5}
-.ptitle{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--g);text-align:center;margin-bottom:12px}
-.cam-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}
+
+/* ── PANELS ── */
+.panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:18px;backdrop-filter:blur(12px);
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05)}
+.panel::before{content:'';position:absolute;top:0;left:15%;right:15%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.6}
+
+.ptitle{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:4px;
+  color:rgba(255,215,0,.7);text-align:center;margin-bottom:14px;
+  text-transform:uppercase;position:relative}
+.ptitle::after{content:'';display:block;width:32px;height:1px;
+  background:var(--c);margin:5px auto 0;opacity:.4}
+
+/* ── CAMERA ── */
+.cam-wrap{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;
+  box-shadow:0 0 0 1px rgba(0,245,255,.15),0 8px 32px rgba(0,0,0,.5)}
 #video,#canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #video{z-index:1}#canvas{z-index:2}
-.corner{position:absolute;inset:0;z-index:3;pointer-events:none;border:2px solid rgba(0,245,255,.2);border-radius:12px}
-.corner::before,.corner::after{content:'';position:absolute;width:20px;height:20px;border-color:var(--c);border-style:solid}
-.corner::before{top:7px;left:7px;border-width:2px 0 0 2px}.corner::after{bottom:7px;right:7px;border-width:0 2px 2px 0}
-.conf-bar-wrap{margin-top:8px;background:rgba(0,0,0,.3);border-radius:6px;overflow:hidden;height:6px}
-.conf-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--c),var(--gr));transition:width .15s;border-radius:6px}
-.hand-show{margin-top:8px;background:rgba(0,0,0,.4);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:center;gap:12px;min-height:72px}
-.hnum{font-family:'Orbitron',monospace;font-size:44px;color:var(--c);line-height:1}
-.himg{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,245,255,.5))}
-.hlabel{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-top:2px}
-.hconf{font-size:11px;color:var(--gr);margin-top:2px;font-weight:600;min-height:16px}
-.dbtn{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:linear-gradient(90deg,#00b4d8,#00f5ff);color:#000;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:1px}
-.dbtn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,245,255,.4)}.dbtn:disabled{background:#333;color:#555;transform:none;box-shadow:none;cursor:not-allowed}
-.offline{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}
-.obtn{padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-family:'Orbitron',monospace;font-size:15px;cursor:pointer;transition:.2s}
-.obtn:hover:not(:disabled){background:var(--g);color:#000;border-color:var(--g)}.obtn:disabled{opacity:.3;cursor:not-allowed}
-.fbtn{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:none;background:linear-gradient(90deg,#ff416c,#ff4b2b);color:#fff;font-family:'Orbitron',monospace;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 25px rgba(255,65,108,.45);display:none;transition:.2s}
-.fbtn:hover{transform:translateY(-2px)}
-.status-box{background:rgba(0,0,0,.4);border-radius:12px;padding:16px;text-align:center;min-height:160px;display:flex;flex-direction:column;justify-content:center;gap:8px}
-.smain{font-family:'Orbitron',monospace;font-size:15px;min-height:44px;display:flex;align-items:center;justify-content:center;transition:.3s;line-height:1.3}
-.smain.run{color:var(--gr)}.smain.out{color:var(--r);animation:shake .5s}
-.phase{display:inline-block;padding:3px 12px;border-radius:20px;font-size:10px;letter-spacing:2px;font-family:'Orbitron',monospace}
-.pe{background:rgba(0,245,255,.12);color:var(--c);border:1px solid var(--c)}.pm{background:rgba(255,165,0,.12);color:orange;border:1px solid orange}.pd{background:rgba(255,56,96,.12);color:var(--r);border:1px solid var(--r)}
-.bhist{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;min-height:30px;margin-top:6px;max-height:90px;overflow-y:auto}
-.bdot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Orbitron',monospace;animation:pop .3s;flex-shrink:0}
-.bdot.run{background:rgba(0,230,118,.18);border:2px solid var(--gr);color:var(--gr)}.bdot.out{background:rgba(255,56,96,.18);border:2px solid var(--r);color:var(--r)}
-.ai-box{background:rgba(0,0,0,.4);border-radius:12px;padding:16px;text-align:center;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
-.aimg{width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(255,215,0,.4))}
-.anum{font-family:'Orbitron',monospace;font-size:48px;font-weight:900;color:var(--g)}
-.await{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px}
-.dots{display:flex;gap:5px;justify-content:center}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:think .8s infinite}
+
+/* Corner brackets */
+.corner{position:absolute;inset:0;z-index:3;pointer-events:none}
+.corner::before,.corner::after,.corner .c3,.corner .c4{
+  content:'';position:absolute;width:22px;height:22px;border-color:var(--c);border-style:solid}
+.corner::before{top:8px;left:8px;border-width:2px 0 0 2px;border-radius:3px 0 0 0}
+.corner::after{bottom:8px;right:8px;border-width:0 2px 2px 0;border-radius:0 0 3px 0}
+.corner .c3{top:8px;right:8px;border-width:2px 2px 0 0;border-radius:0 3px 0 0}
+.corner .c4{bottom:8px;left:8px;border-width:0 0 2px 2px;border-radius:0 0 0 3px}
+
+/* Scan line animation */
+.scan-line{position:absolute;left:0;right:0;height:2px;z-index:4;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(0,245,255,.8),transparent);
+  box-shadow:0 0 12px var(--c);animation:scanDown 3s ease-in-out infinite}
+@keyframes scanDown{0%{top:0;opacity:0}5%{opacity:1}90%{opacity:.6}100%{top:100%;opacity:0}}
+
+/* ── CONFIDENCE BAR ── */
+.conf-bar-wrap{margin-top:10px;background:rgba(0,0,0,.4);border-radius:8px;overflow:hidden;height:4px;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.conf-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--c),var(--gr));
+  transition:width .15s;border-radius:8px;box-shadow:0 0 8px var(--c)}
+
+/* ── HAND DISPLAY ── */
+.hand-show{margin-top:10px;background:rgba(0,0,0,.45);border-radius:12px;
+  padding:12px;display:flex;align-items:center;justify-content:center;gap:14px;
+  min-height:76px;border:1px solid rgba(255,255,255,.06)}
+.hnum{font-family:'Orbitron',monospace;font-size:46px;color:var(--c);line-height:1;
+  text-shadow:0 0 20px rgba(0,245,255,.5)}
+.himg{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(0,245,255,.6))}
+.hlabel{font-size:9px;color:rgba(255,255,255,.3);letter-spacing:3px;margin-top:3px}
+.hconf{font-size:10px;color:var(--gr);margin-top:2px;font-weight:700;min-height:16px;letter-spacing:.5px}
+
+/* ── DETECT BUTTON ── */
+.dbtn{width:100%;margin-top:10px;padding:12px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#0096c7,#00f5ff);color:#000;
+  font-family:'Orbitron',monospace;font-size:11px;font-weight:700;cursor:pointer;
+  transition:.25s;letter-spacing:2px;
+  box-shadow:0 6px 20px rgba(0,245,255,.3)}
+.dbtn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,245,255,.5)}
+.dbtn:disabled{background:rgba(255,255,255,.08);color:rgba(255,255,255,.25);
+  transform:none;box-shadow:none;cursor:not-allowed}
+
+/* ── MANUAL BUTTONS ── */
+.offline{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.obtn{padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);color:#fff;
+  font-family:'Orbitron',monospace;font-size:16px;cursor:pointer;transition:.2s;
+  position:relative;overflow:hidden}
+.obtn::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent,rgba(255,255,255,.05));
+  opacity:0;transition:opacity .2s}
+.obtn:hover:not(:disabled){background:var(--g);color:#000;border-color:var(--g);
+  box-shadow:0 4px 16px rgba(255,215,0,.4);transform:translateY(-1px)}
+.obtn:hover:not(:disabled)::before{opacity:1}
+.obtn:disabled{opacity:.25;cursor:not-allowed}
+
+/* ── FACE BUTTON ── */
+.fbtn{width:100%;margin-top:10px;padding:13px;border-radius:13px;border:none;
+  background:linear-gradient(135deg,#ff416c,#ff4b2b);color:#fff;
+  font-family:'Orbitron',monospace;font-size:11px;font-weight:700;cursor:pointer;
+  box-shadow:0 8px 28px rgba(255,65,108,.5);display:none;transition:.25s;letter-spacing:1px}
+.fbtn:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(255,65,108,.7)}
+
+/* ── STATUS BOX ── */
+.status-box{background:rgba(0,0,0,.45);border-radius:14px;padding:18px;
+  text-align:center;min-height:168px;display:flex;flex-direction:column;
+  justify-content:center;gap:10px;border:1px solid rgba(255,255,255,.06)}
+.smain{font-family:'Orbitron',monospace;font-size:15px;min-height:46px;
+  display:flex;align-items:center;justify-content:center;
+  transition:.3s;line-height:1.3;letter-spacing:.5px}
+.smain.run{color:var(--gr);text-shadow:0 0 16px rgba(0,230,118,.6)}
+.smain.out{color:var(--r);animation:shake .5s;text-shadow:0 0 20px rgba(255,56,96,.8)}
+
+.phase{display:inline-block;padding:4px 14px;border-radius:20px;
+  font-size:9px;letter-spacing:3px;font-family:'Orbitron',monospace}
+.pe{background:rgba(0,245,255,.1);color:var(--c);border:1px solid rgba(0,245,255,.3)}
+.pm{background:rgba(255,165,0,.1);color:orange;border:1px solid rgba(255,165,0,.3)}
+.pd{background:rgba(255,56,96,.1);color:var(--r);border:1px solid rgba(255,56,96,.3)}
+
+/* ── BALL HISTORY ── */
+.bhist-label{font-size:9px;color:rgba(255,255,255,.25);letter-spacing:2px;
+  text-transform:uppercase;text-align:center}
+.bhist{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;
+  min-height:32px;margin-top:6px;max-height:92px;overflow-y:auto;padding:2px}
+.bdot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;
+  font-family:'Orbitron',monospace;animation:pop .3s;flex-shrink:0}
+.bdot.run{background:rgba(0,230,118,.15);border:2px solid var(--gr);color:var(--gr);
+  box-shadow:0 0 8px rgba(0,230,118,.2)}
+.bdot.out{background:rgba(255,56,96,.15);border:2px solid var(--r);color:var(--r);
+  box-shadow:0 0 8px rgba(255,56,96,.3)}
+
+/* ── AI BOX ── */
+.ai-box{background:rgba(0,0,0,.45);border-radius:14px;padding:18px;text-align:center;
+  min-height:168px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;border:1px solid rgba(255,255,255,.06)}
+.aimg{width:110px;height:110px;object-fit:contain;
+  filter:drop-shadow(0 0 18px rgba(255,215,0,.5));transition:.45s}
+.anum{font-family:'Orbitron',monospace;font-size:52px;font-weight:900;color:var(--g);
+  text-shadow:0 0 24px rgba(255,215,0,.5);line-height:1}
+.await{font-size:10px;color:rgba(255,255,255,.25);letter-spacing:3px}
+.dots{display:flex;gap:6px;justify-content:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--g);animation:think .8s infinite;
+  box-shadow:0 0 8px var(--g)}
 .dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
-.lb{max-width:1300px;margin:0 auto 20px;padding:0 18px;position:relative;z-index:5}
-.lbbox{background:var(--p);border:1px solid var(--b);border-radius:18px;padding:16px;backdrop-filter:blur(8px)}
-.lbtitle{font-family:'Orbitron',monospace;font-size:13px;letter-spacing:3px;color:var(--g);text-align:center;margin-bottom:10px}
+
+/* ── LEADERBOARD ── */
+.lb{max-width:1300px;margin:0 auto 24px;padding:0 20px;position:relative;z-index:5}
+.lbbox{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:20px;backdrop-filter:blur(12px);
+  box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.lbtitle-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.lbtitle{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:4px;
+  color:var(--g);text-transform:uppercase}
+.reset-btn{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;
+  padding:6px 14px;border-radius:8px;border:1px solid rgba(255,56,96,.3);
+  background:rgba(255,56,96,.07);color:rgba(255,56,96,.65);cursor:pointer;transition:.2s}
+.reset-btn:hover{background:rgba(255,56,96,.18);border-color:var(--r);color:var(--r);
+  box-shadow:0 0 12px rgba(255,56,96,.25);transform:translateY(-1px)}
+.reset-confirm{display:flex;align-items:center;gap:10px;margin-top:12px;
+  padding:11px 16px;background:rgba(255,56,96,.06);border:1px solid rgba(255,56,96,.18);
+  border-radius:10px;font-family:'Orbitron',monospace;font-size:10px;
+  color:rgba(255,255,255,.45);animation:pop .2s;flex-wrap:wrap}
+.rc-yes{font-family:'Orbitron',monospace;font-size:9px;padding:5px 14px;
+  border-radius:7px;border:none;background:var(--r);color:#fff;cursor:pointer;
+  transition:.2s;letter-spacing:1px}
+.rc-yes:hover{background:#ff1a40;box-shadow:0 4px 14px rgba(255,56,96,.5)}
+.rc-no{font-family:'Orbitron',monospace;font-size:9px;padding:5px 14px;
+  border-radius:7px;border:1px solid rgba(255,255,255,.12);background:transparent;
+  color:rgba(255,255,255,.35);cursor:pointer;transition:.2s;letter-spacing:1px}
+.rc-no:hover{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.65)}
+.lb-empty{text-align:center;padding:24px;font-size:11px;
+  color:rgba(255,255,255,.2);letter-spacing:2px;font-family:'Orbitron',monospace}
+.td-time{font-size:10px;color:rgba(255,255,255,.28);letter-spacing:.3px;
+  white-space:nowrap;text-align:left!important}
+.td-date{font-size:9px;color:rgba(255,255,255,.18);margin-top:1px}
+
 table{width:100%;border-collapse:collapse}
-th{padding:7px 10px;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);border-bottom:1px solid var(--b);text-transform:uppercase}
-td{padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)}
-.r1 td:first-child{color:var(--g)}.r2 td:first-child{color:#C0C0C0}.r3 td:first-child{color:#CD7F32}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:22px}
-.overlay.on{display:flex}
-.ot{font-family:'Orbitron',monospace;font-size:64px;color:var(--r);text-shadow:0 0 50px rgba(255,56,96,.9);animation:shake .6s}
-.ostats{display:flex;gap:40px;text-align:center}
-.osv{font-family:'Orbitron',monospace;font-size:36px;color:var(--g)}
-.osl{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-top:4px}
-.obig{padding:14px 46px;border-radius:12px;border:none;background:linear-gradient(90deg,#ff416c,#ff4b2b);color:#fff;font-family:'Orbitron',monospace;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 10px 32px rgba(255,65,108,.6);transition:.2s}
-.obig:hover{transform:scale(1.05)}
-.float{position:fixed;font-family:'Orbitron',monospace;font-size:36px;font-weight:900;pointer-events:none;z-index:999;animation:floatUp 1s forwards}
-.frun{color:var(--gr);text-shadow:0 0 20px rgba(0,230,118,.8)}.fout{color:var(--r);text-shadow:0 0 20px rgba(255,56,96,.8)}
+thead tr{border-bottom:1px solid rgba(255,215,0,.15)}
+th{padding:8px 12px;font-size:9px;letter-spacing:3px;
+  color:rgba(255,255,255,.3);text-transform:uppercase;font-weight:600}
+td{padding:9px 12px;text-align:center;font-size:13px;
+  border-bottom:1px solid rgba(255,255,255,.03)}
+tbody tr:hover td{background:rgba(255,255,255,.03)}
+.r1 td:first-child{color:var(--g);font-size:18px}
+.r2 td:first-child{color:#C0C0C0;font-size:18px}
+.r3 td:first-child{color:#CD7F32;font-size:18px}
+.r1{background:rgba(255,215,0,.04)}
+
+/* ── OUT OVERLAY ── */
+.overlay{display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(12px);
+  z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:24px}
+.overlay.on{display:flex;animation:fadeOverlay .4s ease}
+@keyframes fadeOverlay{from{opacity:0}to{opacity:1}}
+
+.ot{font-family:'Orbitron',monospace;font-size:clamp(48px,10vw,72px);
+  color:var(--r);text-shadow:0 0 60px rgba(255,56,96,.9),0 0 120px rgba(255,56,96,.4);
+  animation:shake .6s}
+.ostats{display:flex;gap:48px;text-align:center;padding:20px 32px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;backdrop-filter:blur(10px)}
+.osv{font-family:'Orbitron',monospace;font-size:38px;color:var(--g);
+  text-shadow:0 0 16px rgba(255,215,0,.4)}
+.osl{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:3px;margin-top:5px}
+.obig{padding:16px 52px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#ff416c,#ff4b2b);color:#fff;
+  font-family:'Orbitron',monospace;font-size:15px;font-weight:700;cursor:pointer;
+  box-shadow:0 12px 40px rgba(255,65,108,.6);transition:.2s;letter-spacing:2px}
+.obig:hover{transform:scale(1.06);box-shadow:0 18px 50px rgba(255,65,108,.8)}
+
+/* ── FLOAT NUMBERS ── */
+.float{position:fixed;font-family:'Orbitron',monospace;font-size:38px;font-weight:900;
+  pointer-events:none;z-index:999;animation:floatUp 1s forwards}
+.frun{color:var(--gr);text-shadow:0 0 24px rgba(0,230,118,.9)}
+.fout{color:var(--r);text-shadow:0 0 24px rgba(255,56,96,.9)}
+
+/* ── KEYFRAMES ── */
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-8px)}80%{transform:translateX(8px)}}
-@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
-@keyframes think{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:1}}
-@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-100px) scale(1.6);opacity:0}}
+@keyframes pop{from{transform:scale(0) rotate(-20deg);opacity:0}to{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes think{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-7px);opacity:1}}
+@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-110px) scale(1.7);opacity:0}}
 </style>
 </head>
 <body>
 
+<!-- ── OUT OVERLAY (unchanged IDs for JS) ── -->
 <div class="overlay" id="ov">
   <div class="ot">⚡ OUT!</div>
   <div class="ostats">
@@ -93,8 +272,9 @@ td{padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid rgb
   <button class="obig" onclick="location.href='face.html'">👁 See Your Cricketer Twin →</button>
 </div>
 
+<!-- ── NAVBAR ── -->
 <div class="bar">
-  <div class="logo">🏏 AI CRICKET</div>
+  <div class="logo"><span class="logo-dot"></span>🏏 AI CRICKET</div>
   <div class="scores">
     <div class="sc"><div class="sc-l">Runs</div><div class="sc-v" id="runs">0</div></div>
     <div class="sc"><div class="sc-l">Balls</div><div class="sc-v" id="balls">0</div></div>
@@ -103,14 +283,17 @@ td{padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid rgb
   <div class="pinfo"><div class="pname" id="pn">Player</div><div class="pbranch" id="pb">Branch</div></div>
 </div>
 
+<!-- ── MAIN GRID ── -->
 <div class="grid">
 
+  <!-- YOUR HAND -->
   <div class="panel">
-    <div class="ptitle">👁 YOUR HAND</div>
+    <div class="ptitle">👁 Your Hand</div>
     <div class="cam-wrap">
       <video id="video" autoplay muted playsinline></video>
       <canvas id="canvas"></canvas>
-      <div class="corner"></div>
+      <div class="scan-line"></div>
+      <div class="corner"><span class="c3"></span><span class="c4"></span></div>
     </div>
     <div class="conf-bar-wrap"><div class="conf-bar" id="confBar"></div></div>
     <div class="hand-show">
@@ -133,19 +316,21 @@ td{padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid rgb
     <button class="fbtn" id="fb" onclick="location.href='face.html'">👁 See Your Cricketer Twin</button>
   </div>
 
+  <!-- MATCH STATUS -->
   <div class="panel">
-    <div class="ptitle">🎯 MATCH STATUS</div>
+    <div class="ptitle">🎯 Match Status</div>
     <div class="status-box">
       <div class="smain" id="st">Ready to Play</div>
       <span class="phase pe" id="ph">EARLY GAME</span>
-      <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-top:6px">BALL HISTORY</div>
+      <div class="bhist-label">Ball History</div>
       <div class="bhist" id="bh"></div>
     </div>
     <button class="fbtn" id="fb2" onclick="location.href='face.html'">👁 See Your Cricketer Twin</button>
   </div>
 
+  <!-- AI MOVE -->
   <div class="panel">
-    <div class="ptitle">🤖 AI MOVE</div>
+    <div class="ptitle">🤖 AI Move</div>
     <div class="ai-box" id="aibox">
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
       <div class="await">Waiting for your move...</div>
@@ -154,13 +339,23 @@ td{padding:7px 10px;text-align:center;font-size:13px;border-bottom:1px solid rgb
 
 </div>
 
+<!-- ── LEADERBOARD ── -->
 <div class="lb">
   <div class="lbbox">
-    <div class="lbtitle">📊 LEADERBOARD</div>
-    <table>
-      <thead><tr><th>#</th><th>Player</th><th>Runs</th><th>Balls</th><th>SR</th></tr></thead>
+    <div class="lbtitle-row">
+      <div class="lbtitle">📊 Leaderboard</div>
+      <button class="reset-btn" onclick="resetLeaderboard()">🗑 Reset</button>
+    </div>
+    <div id="lbEmpty" class="lb-empty" style="display:none">No scores yet — play to get on the board!</div>
+    <table id="lbTable">
+      <thead><tr><th>#</th><th>Player</th><th>Branch</th><th>Runs</th><th>Balls</th><th>SR</th><th>Date &amp; Time</th></tr></thead>
       <tbody id="lbb"></tbody>
     </table>
+    <div class="reset-confirm" id="resetConfirm" style="display:none">
+      <span>⚠️ Clear all leaderboard scores?</span>
+      <button class="rc-yes" onclick="confirmReset()">Yes, reset</button>
+      <button class="rc-no" onclick="cancelReset()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -232,8 +427,16 @@ function endGame(){
   document.getElementById("dbtn").style.display="none";
   ["fb","fb2"].forEach(id=>document.getElementById(id).style.display="block");
   const sr=balls?((runs/balls)*100).toFixed(2):"0.00";
+  const now=new Date();
   const lb=JSON.parse(localStorage.getItem("leaderboard"))||[];
-  lb.push({name:player.name,runs,balls,sr});
+  lb.push({
+    name:player.name,
+    branch:player.branch||"—",
+    runs,balls,sr,
+    timestamp: now.toISOString(),
+    date: now.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}),
+    time: now.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:true})
+  });
   localStorage.setItem("leaderboard",JSON.stringify(lb)); renderLB();
   document.getElementById("fR").textContent=runs;
   document.getElementById("fB").textContent=balls;
@@ -243,11 +446,30 @@ function endGame(){
 
 function renderLB(){
   const lb=(JSON.parse(localStorage.getItem("leaderboard"))||[]).sort((a,b)=>b.runs-a.runs||b.sr-a.sr||a.balls-b.balls);
+  const empty=document.getElementById("lbEmpty");
+  const table=document.getElementById("lbTable");
+  if(!lb.length){ empty.style.display="block"; table.style.display="none"; return; }
+  empty.style.display="none"; table.style.display="table";
   document.getElementById("lbb").innerHTML=lb.map((p,i)=>`
     <tr class="${i<3?'r'+(i+1):''}">
       <td>${["🥇","🥈","🥉"][i]||i+1}</td>
       <td style="text-align:left">${p.name}</td>
-      <td>${p.runs}</td><td>${p.balls}</td><td>${p.sr}</td></tr>`).join('');
+      <td style="text-align:left;font-size:11px;opacity:.5">${p.branch||"—"}</td>
+      <td>${p.runs}</td><td>${p.balls}</td><td>${p.sr}</td>
+      <td class="td-time">${p.time||"—"}<div class="td-date">${p.date||"—"}</div></td>
+    </tr>`).join('');
+}
+
+function resetLeaderboard(){
+  document.getElementById("resetConfirm").style.display="flex";
+}
+function cancelReset(){
+  document.getElementById("resetConfirm").style.display="none";
+}
+function confirmReset(){
+  localStorage.removeItem("leaderboard");
+  document.getElementById("resetConfirm").style.display="none";
+  renderLB();
 }
 
 // ── STABILITY BUFFER: 10 frames, 7 must agree ──
@@ -274,23 +496,8 @@ function tryFire(n){
 
 // ════════════════════════════════════════════════════
 //  FINGER DETECTION — BOTH JOINTS MUST BE STRAIGHT
-//
-//  MediaPipe hand landmarks per finger:
-//
-//  TIP  (4,8,12,16,20)
-//   |
-//  DIP  (3,7,11,15,19)  ← 2nd tip line / top knuckle
-//   |
-//  PIP  (2,6,10,14,18)  ← 1st knuckle
-//   |
-//  MCP  (1,5, 9,13,17)  ← base knuckle
-//
-//  Rule: count finger ONLY if BOTH angles are > 150°
-//    PIP angle = MCP → PIP → DIP
-//    DIP angle = PIP → DIP → TIP  ← if tip is curled, this fails
 // ════════════════════════════════════════════════════
 
-// Dot-product angle at joint B between A-B-C
 function angle3(A,B,C){
   const ax=A.x-B.x, ay=A.y-B.y, az=(A.z||0)-(B.z||0);
   const cx=C.x-B.x, cy=C.y-B.y, cz=(C.z||0)-(B.z||0);
@@ -299,20 +506,18 @@ function angle3(A,B,C){
   return m?Math.acos(Math.min(1,Math.max(-1,dot/m)))*180/Math.PI:180;
 }
 
-// [MCP, PIP, DIP, TIP] for each finger
 const FMAP=[[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]];
 
 function isFingerUp(lm,[mcp,pip,dip,tip]){
-  const pipAngle=angle3(lm[mcp],lm[pip],lm[dip]); // 1st knuckle
-  const dipAngle=angle3(lm[pip],lm[dip],lm[tip]); // 2nd knuckle (tip line)
-  return pipAngle>150 && dipAngle>150; // BOTH must be straight to count
+  const pipAngle=angle3(lm[mcp],lm[pip],lm[dip]);
+  const dipAngle=angle3(lm[pip],lm[dip],lm[tip]);
+  return pipAngle>150 && dipAngle>150;
 }
 
 function isThumbOpen(lm){
-  const ip   = angle3(lm[2],lm[3],lm[4]);   // IP joint angle
-  const mcp  = angle3(lm[1],lm[2],lm[3]);   // MCP joint angle
-  const dist = Math.hypot(lm[4].x-lm[5].x, lm[4].y-lm[5].y); // 2D dist tip to index base
-  // Use 2D distance (more reliable than just X) + angle check
+  const ip   = angle3(lm[2],lm[3],lm[4]);
+  const mcp  = angle3(lm[1],lm[2],lm[3]);
+  const dist = Math.hypot(lm[4].x-lm[5].x, lm[4].y-lm[5].y);
   return (ip>150 && mcp>135 && dist>0.08);
 }
 
@@ -351,11 +556,9 @@ hands.onResults(results=>{
   const lm=results.multiHandLandmarks[0];
   const sx=canvas.width, sy=canvas.height;
 
-  // Draw skeleton
   drawConnectors(ctx,lm,HAND_CONNECTIONS,{color:"#00f5ff",lineWidth:2});
   drawLandmarks(ctx,lm,{color:"#FFD700",lineWidth:1,radius:3});
 
-  // Highlight DIP joints (2nd tip line) in RED — so player can see what's being checked
   [7,11,15,19].forEach(i=>{
     ctx.beginPath();
     ctx.arc(lm[i].x*sx,lm[i].y*sy,6,0,Math.PI*2);
@@ -363,7 +566,6 @@ hands.onResults(results=>{
     ctx.strokeStyle="#fff"; ctx.lineWidth=1.5; ctx.stroke();
   });
 
-  // Highlight TIPs in green when straight, red when bent
   FMAP.forEach(([mcp,pip,dip,tip])=>{
     const dipAngle=angle3(lm[pip],lm[dip],lm[tip]);
     ctx.beginPath();
